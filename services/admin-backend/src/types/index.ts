@@ -28,6 +28,7 @@ export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
   message?: string;
+  error?: string;
   timestamp: Date;
 }
 
@@ -180,4 +181,8 @@ export interface ChatSession {
   messages: ChatMessage[];
   created_at: Date;
   updated_at: Date;
+  userId?: string;
 }
+
+export interface AIChatRequest { message: string }
+export interface AIAnalyzeDocumentRequest { documentId: string; prompt?: string; includeContent?: boolean }
