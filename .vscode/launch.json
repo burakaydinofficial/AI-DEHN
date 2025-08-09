@@ -1,0 +1,45 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Admin Backend",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/services/admin-backend/src/server.ts",
+      "outFiles": ["${workspaceFolder}/services/admin-backend/dist/**/*.js"],
+      "runtimeArgs": ["-r", "ts-node/register"],
+      "env": {
+        "NODE_ENV": "development",
+        "PORT": "3002"
+      },
+      "cwd": "${workspaceFolder}/services/admin-backend",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Debug User Backend",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/services/user-backend/src/server.ts",
+      "outFiles": ["${workspaceFolder}/services/user-backend/dist/**/*.js"],
+      "runtimeArgs": ["-r", "ts-node/register"],
+      "env": {
+        "NODE_ENV": "development",
+        "PORT": "3003"
+      },
+      "cwd": "${workspaceFolder}/services/user-backend",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Debug PDF Processor",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/services/pdf-processor/main.py",
+      "cwd": "${workspaceFolder}/services/pdf-processor",
+      "env": {
+        "PORT": "3001",
+        "DEBUG": "true"
+      },
+      "console": "integratedTerminal"
+    }
+  ]
+}

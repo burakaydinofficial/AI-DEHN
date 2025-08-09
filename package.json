@@ -1,0 +1,42 @@
+{
+  "name": "dehn-hackathon",
+  "version": "1.0.0",
+  "description": "DEHN Hackathon - Multi-service document processing application",
+  "private": true,
+  "workspaces": [
+    "services/admin-backend",
+    "services/user-backend", 
+    "apps/admin-frontend",
+    "apps/mobile-frontend",
+    "packages/api-models",
+    "packages/ai-agent"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:pdf\" \"npm run dev:admin-backend\" \"npm run dev:user-backend\" \"npm run dev:admin-frontend\" \"npm run dev:mobile-frontend\"",
+    "dev:pdf": "cd services/pdf-processor && python main.py",
+    "dev:admin-backend": "cd services/admin-backend && npm run dev",
+    "dev:user-backend": "cd services/user-backend && npm run dev",
+    "dev:admin-frontend": "cd apps/admin-frontend && npm run dev",
+    "dev:mobile-frontend": "cd apps/mobile-frontend && npm run dev",
+    "build": "npm run build:packages && npm run build:services && npm run build:apps",
+    "build:packages": "npm run build --workspaces --if-present packages/*",
+    "build:services": "npm run build --workspaces --if-present services/*",
+    "build:apps": "npm run build --workspaces --if-present apps/*",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "type-check": "npm run type-check --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
+    "install:python": "cd services/pdf-processor && pip install -r requirements.txt"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

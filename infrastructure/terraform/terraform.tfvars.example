@@ -1,0 +1,14 @@
+# terraform.tfvars.example
+# Copy this file to terraform.tfvars and fill in your values
+
+# Your Google Cloud Project ID
+project_id = "your-gcp-project-id"
+
+# The region where resources will be deployed
+region = "us-central1"
+
+# The zone where resources will be deployed  
+zone = "us-central1-a"
+
+# Environment (dev, staging, prod)
+environment = "dev"
