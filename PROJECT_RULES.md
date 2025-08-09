@@ -1,16 +1,73 @@
 # 🎯 DEHN PROJECT RULES & STANDARDS
 
+**Multi-Language Document Processing & Publishing Platform**
+
 ## 📍 **PORT ASSIGNMENTS - NEVER CHANGE THESE**
 
 | Service | Port | URL | Purpose |
 |---------|------|-----|---------|
-| PDF Processor | **3095** | http://localhost:3095 | PDF analysis & image extraction |
-| Admin Backend | **3091** | http://localhost:3091 | Admin API |
-| User Backend | **3090** | http://localhost:3090 | User API |
-| Admin Frontend | **8091** | http://localhost:8091 | Admin panel (desktop-first) |
-| User Frontend | **8090** | http://localhost:8090 | Mobile app (mobile-first) |
-| MinIO Storage | **9000** | http://localhost:9000 | S3-compatible storage |
+| PDF Processor | **3095** | http://localhost:3095 | Layout-aware PDF extraction & image processing |
+| Admin Backend | **3091** | http://localhost:3091 | Document workflow API (processing pipeline) |
+| User Backend | **3090** | http://localhost:3090 | Public document access API (multi-language) |
+| Admin Panel | **8091** | http://localhost:8091 | Document processing workflow interface |
+| User App | **8090** | http://localhost:8090 | Multi-language document viewer |
+| MinIO Storage | **9000** | http://localhost:9000 | S3-compatible storage API |
 | MinIO Console | **9001** | http://localhost:9001 | MinIO web interface |
+
+## 🗄️ **STORAGE ARCHITECTURE RULES**
+
+### **Dual-Bucket Strategy:**
+- **🔒 Private Bucket (`dehn-private`)**: Original PDFs, processing artifacts, admin-only
+- **🌐 Public Bucket (`dehn-public`)**: Published content, CDN-ready, public access
+- **📊 Database (MongoDB Atlas)**: Metadata, processing status, content relationships
+
+### **Environment-Based Storage:**
+- **Development**: MinIO containers (localhost:9000/9001)
+- **Production**: Google Cloud Storage with proper IAM policies
+
+## 🔄 **DOCUMENT PROCESSING WORKFLOW RULES**
+
+### **Phase 1: Upload & Extraction**
+1. Admin uploads PDF via admin panel (port 8091)
+2. Admin backend (3091) sends to PDF processor (3095)
+3. PDF processor extracts layout-aware JSON + images
+4. Original PDF + ZIP stored in **private bucket**
+5. Database updated with processing status
+
+### **Phase 2: Content Grouping**
+1. AI analyzes extracted content for repeated components
+2. Text grouped by language and semantic meaning
+3. Layout relationships preserved in grouping data
+4. Processed groups stored in **private bucket**
+
+### **Phase 3: Translation Generation**  
+1. AI generates missing language versions
+2. Layout context maintained during translation
+3. Generated content stored in **private bucket** (pending approval)
+4. Multiple versions tracked in database
+
+### **Phase 4: Publishing**
+1. Admin selects approved versions for publishing
+2. Selected content moved to **public bucket**
+3. User app (8090) accesses via user backend (3090)
+4. Layout-aware rendering for multi-language display
+
+## 🤖 **AI INTEGRATION RULES**
+
+### **Content Analysis:**
+- Use AI for component detection across languages
+- Preserve layout relationships in AI outputs
+- Track confidence scores for AI decisions
+
+### **Translation Generation:**
+- Maintain source layout context during translation  
+- Use multiple language versions as translation context
+- Store AI-generated content separately from originals
+
+### **Layout Preservation:**
+- Extract precise positioning data (x, y, width, height)
+- Maintain font properties and styling information
+- Preserve reading order and document structure
 
 ## 📁 **FILE STRUCTURE RULES**
 

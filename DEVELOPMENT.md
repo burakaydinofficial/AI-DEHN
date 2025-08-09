@@ -1,4 +1,33 @@
-# DEHN Hackathon - Development Guide
+# DEHN - Multi-Language Document Processing Platform
+
+## Development Guide
+
+DEHN is a sophisticated document processing pipeline for multi-language content management with AI-powered translation and layout-aware rendering.
+
+## Project Architecture
+
+```
+DEHN/
+├── services/                    # Backend services
+│   ├── pdf-processor/          # Python service (PyMuPDF + layout extraction)
+│   ├── admin-backend/          # Express TS admin workflow API
+│   └── user-backend/           # Express TS public access API
+├── apps/                       # Frontend applications
+│   ├── admin-frontend/         # React admin workflow panel
+│   └── mobile-frontend/        # React public document viewer
+├── packages/                   # Shared libraries
+│   ├── api-models/            # TypeScript types and interfaces
+│   └── ai-agent/              # AI/LLM integration (Gemini)
+└── infrastructure/            # Deployment configuration
+    └── terraform/             # Google Cloud infrastructure
+```
+
+## Core Workflow
+
+1. **PDF Upload & Extraction** → Admin uploads → PDF processor extracts with layout
+2. **Content Grouping** → AI analyzes and groups repeated components across languages  
+3. **Translation Generation** → AI creates missing language versions with layout awareness
+4. **Publishing** → Admin selects versions → Content moves to public bucket → Users access
 
 ## Quick Start
 
@@ -11,36 +40,19 @@
 
 2. **Environment Configuration**
    ```bash
-   # Copy environment templates
-   cp services/admin-backend/.env.example services/admin-backend/.env
-   cp services/user-backend/.env.example services/user-backend/.env
-   cp services/pdf-processor/.env.example services/pdf-processor/.env
+   # Copy environment template
+   cp .env.example .env
    
-   # Update the .env files with your values
+   # Update .env with:
+   # - MongoDB Atlas connection string
+   # - Google Cloud Storage credentials (production)
+   # - AI API keys (Gemini)
    ```
 
 3. **Start Development**
    ```bash
    npm run dev
    ```
-
-## Project Architecture
-
-```
-DEHN/
-├── services/                    # Backend services
-│   ├── pdf-processor/          # Python service (PyMuPDF + Bottle)
-│   ├── admin-backend/          # Express TS admin API
-│   └── user-backend/           # Express TS user API
-├── apps/                       # Frontend applications
-│   ├── admin-frontend/         # React admin panel (desktop-first)
-│   └── mobile-frontend/        # React mobile app (mobile-first)
-├── packages/                   # Shared libraries
-│   ├── api-models/            # TypeScript types and interfaces
-│   └── ai-agent/              # Gemini LLM integration
-└── infrastructure/            # Deployment configuration
-    └── terraform/             # Google Cloud infrastructure
-```
 
 ## Service URLs (Development)
 
@@ -54,35 +66,59 @@ DEHN/
 
 ## API Endpoints
 
-### PDF Processor Service (Python)
+### PDF Processor Service (Python) - Layout-Aware Extraction
 - `GET /health` - Health check
-- `POST /extract` - Extract content from PDF file
+- `POST /extract` - Extract PDF with layout information and positioning data
+- `POST /extract/zip` - Extract PDF + images as ZIP with complete structure
 
-### Admin Backend Service (TypeScript)
-- `POST /api/auth/login` - Admin login
+### Admin Backend Service (TypeScript) - Document Processing Workflow
+**Document Processing Pipeline:**
+- `POST /api/documents/upload` - Upload PDF and trigger extraction workflow
+- `GET /api/documents` - List documents with processing status (paginated, searchable)
+- `GET /api/documents/:id` - Get document details and current processing phase
+- `GET /api/documents/:id/status` - Poll real-time processing status
+- `DELETE /api/documents/:id` - Delete document and all associated content
+
+**Content Grouping & Analysis:**
+- `POST /api/documents/:id/analyze` - Trigger AI content grouping phase
+- `GET /api/documents/:id/groups` - Get AI-generated content groups by language
+- `PUT /api/documents/:id/groups` - Update and approve content group assignments
+
+**Translation Management:**
+- `POST /api/documents/:id/translate` - Generate missing language versions with AI
+- `GET /api/documents/:id/translations` - Get all available translations and versions
+- `PUT /api/documents/:id/translations/:lang` - Update/approve specific language translation
+
+**Publishing Workflow:**
+- `GET /api/documents/:id/versions` - Get all versions available for publishing
+- `POST /api/documents/:id/publish` - Move selected content to public bucket
+- `GET /api/documents/:id/published` - Get published status and public access URLs
+
+**Authentication & User Management:**
+- `POST /api/auth/login` - Admin authentication
 - `POST /api/auth/logout` - Admin logout
-- `GET /api/auth/me` - Get current admin user
-- `GET /api/documents` - List all documents (paginated, with search)
-- `POST /api/documents/upload` - Upload PDF document
-- `GET /api/documents/:id` - Get document by ID
-- `DELETE /api/documents/:id` - Delete document
-- `GET /api/users` - List all users (paginated, with search)
+- `GET /api/auth/me` - Get current admin user details
+- `GET /api/users` - List users (paginated, searchable)
 - `GET /api/users/:id` - Get user by ID  
-- `PUT /api/users/:id` - Update user
-- `DELETE /api/users/:id` - Delete user
-- `POST /api/ai/chat/start` - Start AI chat session
-- `POST /api/ai/chat/:sessionId` - Continue chat conversation
-- `GET /api/ai/chat/sessions` - Get user's chat sessions
-- `POST /api/ai/analyze-document` - Analyze document with AI
-- `POST /api/ai/insights` - Generate content insights
-- `POST /api/ai/summarize` - Summarize content  
-- `POST /api/ai/questions` - Generate questions from content
+- `PUT /api/users/:id` - Update user information
+- `DELETE /api/users/:id` - Delete user account
 
-### User Backend Service (TypeScript)
+**AI Integration:**
+- `POST /api/ai/analyze-document` - AI document structure analysis
+- `POST /api/ai/group-content` - AI content grouping across languages
+- `POST /api/ai/translate` - AI translation with layout context
+- `POST /api/ai/chat/start` - Start AI processing session
+- `POST /api/ai/chat/:sessionId` - Continue AI conversation
+- `GET /api/ai/chat/sessions` - Get user's AI processing sessions
+
+### User Backend Service (TypeScript) - Public Document Access
 - `GET /health` - Health check
-- `GET /api/auth` - Placeholder (coming soon)
-- `GET /api/documents` - Placeholder (coming soon)
-- `GET /api/ai` - Placeholder (coming soon)
+- `GET /api/documents` - List published documents with language options
+- `GET /api/documents/:id` - Get published document metadata
+- `GET /api/documents/:id/content/:lang` - Get document content in specific language
+- `GET /api/documents/:id/layout/:lang` - Get layout rendering data for language
+- `GET /api/documents/search` - Search published documents
+- `GET /api/languages` - Get available languages for documents
 
 ## Development Workflow
 

@@ -1,0 +1,113 @@
+services:
+  # PDF Processor - Python service for PDF analysis and image extraction
+  pdf-processor:
+    build:
+      context: ./services/pdf-processor
+      dockerfile: Dockerfile
+    ports:
+      - "3095:3095"
+    environment:
+      - PORT=3095
+      - DEBUG=false
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./example-files:/app/example-files:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3095/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  # Admin Backend - Express TypeScript API for admin operations
+  admin-backend:
+    build:
+      context: ./services/admin-backend
+      dockerfile: Dockerfile
+    ports:
+      - "3091:3091"
+    environment:
+      - NODE_ENV=development
+      - PORT=3091
+      - PDF_PROCESSOR_URL=http://pdf-processor:3095
+      - CORS_ORIGINS=http://localhost:8091
+    depends_on:
+      - pdf-processor
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3091/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  # User Backend - Express TypeScript API for user operations
+  user-backend:
+    build:
+      context: ./services/user-backend
+      dockerfile: Dockerfile
+    ports:
+      - "3090:3090"
+    environment:
+      - NODE_ENV=development
+      - PORT=3090
+      - PDF_PROCESSOR_URL=http://pdf-processor:3095
+      - CORS_ORIGINS=http://localhost:8090
+    depends_on:
+      - pdf-processor
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3090/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  # Admin Frontend - React TypeScript admin panel (desktop-first design)
+  admin-frontend:
+    build:
+      context: ./apps/admin-frontend
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "8091:8091"
+    environment:
+      - NODE_ENV=development
+      - VITE_ADMIN_BACKEND_URL=http://localhost:3091
+      - VITE_PDF_PROCESSOR_URL=http://localhost:3095
+    depends_on:
+      - admin-backend
+
+  # User Frontend - React TypeScript mobile app (mobile-first design)
+  mobile-frontend:
+    build:
+      context: ./apps/mobile-frontend
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "8090:8090"
+    environment:
+      - NODE_ENV=development
+      - VITE_USER_BACKEND_URL=http://localhost:3090
+    depends_on:
+      - user-backend
+
+  # MinIO - S3-compatible storage for development
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Console
+    environment:
+      - MINIO_ROOT_USER=dehn-access-key
+      - MINIO_ROOT_PASSWORD=dehn-secret-key
+      - MINIO_DEFAULT_BUCKETS=dehn-public:public,dehn-private:none
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+volumes:
+  minio_data:
