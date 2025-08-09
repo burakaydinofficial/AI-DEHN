@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { User, ApiResponse, PaginatedResponse, UpdateUserRequest } from '@dehn/api-models';
+import { User, ApiResponse, PaginatedResponse, UpdateUserRequest } from '../types';
 
 export const usersRouter = Router();
 

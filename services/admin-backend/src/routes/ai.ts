@@ -1,12 +1,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { AIAgent } from '@dehn/ai-agent';
+import { AIAgent } from '../utils/aiAgent';
 import { 
   AIChatRequest, 
   AIAnalyzeDocumentRequest, 
   ApiResponse, 
   ChatSession,
   AIResponse 
-} from '@dehn/api-models';
+} from '../types';
 
 export const aiRouter = Router();
 

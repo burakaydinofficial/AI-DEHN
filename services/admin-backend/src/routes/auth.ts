@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { AuthRequest, AuthResponse, ApiResponse } from '@dehn/api-models';
+import { AuthRequest, AuthResponse, ApiResponse } from '../types';
 
 export const authRouter = Router();
 

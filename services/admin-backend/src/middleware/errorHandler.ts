@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { ApiError, ApiResponse } from '@dehn/api-models';
+import { ApiError, ApiResponse } from '../types';
 
 export const errorHandler = (
   error: any,

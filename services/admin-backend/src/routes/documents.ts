@@ -7,7 +7,7 @@ import {
   ApiResponse, 
   PaginatedResponse,
   PDFProcessingResult 
-} from '@dehn/api-models';
+} from '../types';
 
 export const documentsRouter = Router();
 

@@ -1,7 +1,7 @@
-import { Request, Response } from 'express';
-import { ApiResponse } from '@dehn/api-models';
+import { Request, Response, NextFunction } from 'express';
+import { ApiResponse } from '../types';
 
-export const notFoundHandler = (req: Request, res: Response) => {
+export const notFoundHandler = (req: Request, res: Response, next: NextFunction) => {
   const response: ApiResponse = {
     success: false,
     error: `Route ${req.method} ${req.path} not found`,

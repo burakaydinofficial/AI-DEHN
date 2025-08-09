@@ -12,7 +12,8 @@
     "packages/ai-agent"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:pdf\" \"npm run dev:admin-backend\" \"npm run dev:user-backend\" \"npm run dev:admin-frontend\" \"npm run dev:mobile-frontend\"",
+    "dev": "docker compose up --build",
+    "dev:local": "concurrently \"npm run dev:pdf\" \"npm run dev:admin-backend\" \"npm run dev:user-backend\" \"npm run dev:admin-frontend\" \"npm run dev:mobile-frontend\"",
     "dev:pdf": "cd services/pdf-processor && python main.py",
     "dev:admin-backend": "cd services/admin-backend && npm run dev",
     "dev:user-backend": "cd services/user-backend && npm run dev",
@@ -23,14 +24,16 @@
     "build:services": "npm run build --workspaces --if-present services/*",
     "build:apps": "npm run build --workspaces --if-present apps/*",
     "test": "npm run test --workspaces --if-present",
+    "test:pdf": "curl -X POST -F \"file=@example-files/example-flyer.pdf\" http://localhost:3095/extract",
     "lint": "npm run lint --workspaces --if-present",
     "type-check": "npm run type-check --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
     "install:python": "cd services/pdf-processor && pip install -r requirements.txt",
-    "docker:up": "docker compose up -d",
+    "docker:up": "docker compose up --build",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
-    "docker:clean": "docker compose down -v --rmi all --remove-orphans"
+    "docker:clean": "docker compose down -v --rmi all --remove-orphans",
+    "docker:prod": "docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
