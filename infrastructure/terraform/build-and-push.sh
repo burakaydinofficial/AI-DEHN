@@ -88,7 +88,7 @@ for SERVICE in "${SERVICES[@]}"; do
     # Build the Docker image
     IMAGE_NAME="gcr.io/$PROJECT_ID/dehn-$SERVICE"
     
-    if docker build -t "$IMAGE_NAME:latest" -f "services/$SERVICE/Dockerfile" "services/$SERVICE"; then
+    if docker build --platform linux/amd64 -t "$IMAGE_NAME:latest" -f "services/$SERVICE/Dockerfile" "services/$SERVICE"; then
         print_status "✅ Successfully built $SERVICE"
         
         # Push the image

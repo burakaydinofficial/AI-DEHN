@@ -83,12 +83,23 @@ resource "google_storage_bucket" "documents" {
 # Secret Manager secrets
 resource "google_secret_manager_secret" "jwt_secret" {
   secret_id = "jwt-secret-${var.environment}"
-
+  
   replication {
     auto {}
   }
 
   depends_on = [google_project_service.required_apis]
+}
+
+# Create initial secret versions
+resource "google_secret_manager_secret_version" "jwt_secret_version" {
+  secret = google_secret_manager_secret.jwt_secret.name
+  secret_data = "your-jwt-secret-key-change-me-in-production"
+}
+
+resource "google_secret_manager_secret_version" "ai_api_key_version" {
+  secret = google_secret_manager_secret.ai_api_key.name
+  secret_data = "your-ai-api-key-here"
 }
 
 resource "google_secret_manager_secret" "ai_api_key" {
@@ -103,6 +114,26 @@ resource "google_secret_manager_secret" "ai_api_key" {
 
 # Cloud Run services
 
+# Service Account for Cloud Run services
+resource "google_service_account" "cloud_run_sa" {
+  account_id   = "dehn-cloud-run-${var.environment}"
+  display_name = "Cloud Run Service Account"
+  description  = "Service account for DEHN Cloud Run services"
+}
+
+# Grant Secret Manager access to the service account
+resource "google_secret_manager_secret_iam_member" "ai_api_key_access" {
+  secret_id = google_secret_manager_secret.ai_api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "jwt_secret_access" {
+  secret_id = google_secret_manager_secret.jwt_secret.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
 # PDF Processor Service
 resource "google_cloud_run_service" "pdf_processor" {
   name     = "dehn-pdf-processor-${var.environment}"
@@ -110,16 +141,13 @@ resource "google_cloud_run_service" "pdf_processor" {
 
   template {
     spec {
+      service_account_name = google_service_account.cloud_run_sa.email
+
       containers {
         image = "gcr.io/${var.project_id}/dehn-pdf-processor:latest"
 
         ports {
           container_port = 3095
-        }
-
-        env {
-          name  = "PORT"
-          value = "3095"
         }
 
         env {
@@ -150,7 +178,10 @@ resource "google_cloud_run_service" "pdf_processor" {
     latest_revision = true
   }
 
-  depends_on = [google_project_service.required_apis]
+  depends_on = [
+    google_project_service.required_apis,
+    google_service_account.cloud_run_sa
+  ]
 }
 
 # Admin Backend Service
@@ -160,16 +191,13 @@ resource "google_cloud_run_service" "admin_backend" {
 
   template {
     spec {
+      service_account_name = google_service_account.cloud_run_sa.email
+
       containers {
         image = "gcr.io/${var.project_id}/dehn-admin-backend:latest"
 
         ports {
           container_port = 3091
-        }
-
-        env {
-          name  = "PORT"
-          value = "3091"
         }
 
         env {
@@ -223,7 +251,12 @@ resource "google_cloud_run_service" "admin_backend" {
     latest_revision = true
   }
 
-  depends_on = [google_project_service.required_apis]
+  depends_on = [
+    google_project_service.required_apis,
+    google_service_account.cloud_run_sa,
+    google_secret_manager_secret_iam_member.ai_api_key_access,
+    google_secret_manager_secret_iam_member.jwt_secret_access
+  ]
 }
 
 # User Backend Service
@@ -233,16 +266,13 @@ resource "google_cloud_run_service" "user_backend" {
 
   template {
     spec {
+      service_account_name = google_service_account.cloud_run_sa.email
+
       containers {
         image = "gcr.io/${var.project_id}/dehn-user-backend:latest"
 
         ports {
           container_port = 3090
-        }
-
-        env {
-          name  = "PORT"
-          value = "3090"
         }
 
         env {
@@ -291,7 +321,12 @@ resource "google_cloud_run_service" "user_backend" {
     latest_revision = true
   }
 
-  depends_on = [google_project_service.required_apis]
+  depends_on = [
+    google_project_service.required_apis,
+    google_service_account.cloud_run_sa,
+    google_secret_manager_secret_iam_member.ai_api_key_access,
+    google_secret_manager_secret_iam_member.jwt_secret_access
+  ]
 }
 
 # Cloud Run service IAM (conditional)
