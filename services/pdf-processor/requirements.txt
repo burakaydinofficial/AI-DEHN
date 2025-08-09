@@ -2,3 +2,6 @@
 bottle>=0.12.25
 PyMuPDF>=1.23.0
 gunicorn>=21.2.0
+
+# Testing dependencies
+requests>=2.31.0

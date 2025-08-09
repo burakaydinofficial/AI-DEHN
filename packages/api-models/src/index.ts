@@ -23,7 +23,7 @@ export interface AuthResponse {
   message?: string;
 }
 
-// PDF Processing
+// PDF Processing - Enhanced with layout information
 export interface PDFMetadata {
   title: string;
   author: string;
@@ -35,17 +35,81 @@ export interface PDFMetadata {
   page_count: number;
 }
 
+export interface FontProperties {
+  superscript: boolean;
+  italic: boolean;
+  serifed: boolean;
+  monospaced: boolean;
+  bold: boolean;
+}
+
+export interface TextSpan {
+  bbox: [number, number, number, number]; // [x0, y0, x1, y1]
+  text: string;
+  font: string;
+  size: number;
+  flags: number; // Raw font flags
+  font_properties: FontProperties;
+  color: number; // Raw color value
+  color_hex: string; // Hex color string
+  ascender: number;
+  descender: number;
+  origin: [number, number]; // Text origin point
+}
+
+export interface TextLine {
+  bbox: [number, number, number, number];
+  wmode: number; // Writing mode
+  dir: [number, number]; // Text direction
+  spans: TextSpan[];
+}
+
+export interface TextBlock {
+  bbox: [number, number, number, number];
+  block_type: "text";
+  lines: TextLine[];
+}
+
+export interface PageDimensions {
+  width: number;
+  height: number;
+  rotation: number;
+}
+
 export interface PDFPageContent {
   page_number: number;
   text: string;
   char_count: number;
+  page_dimensions: PageDimensions;
+  text_blocks: TextBlock[];
 }
 
 export interface PDFImageInfo {
   page_number: number;
   image_index: number;
+  xref: number; // Image reference number
+  smask: number; // Soft mask reference  
   width: number;
   height: number;
+  bpc: number; // Bits per component
+  colorspace: string; // Color space
+  alt: string; // Alternative text
+  name: string; // Image name
+  filter: string; // Compression filter
+  bbox: [number, number, number, number]; // Position on page
+  transform: number[] | null; // Transformation matrix
+  size_bytes: number; // Image size in bytes
+  actual_width: number; // Actual pixel width
+  actual_height: number; // Actual pixel height
+  colorspace_details: string; // Detailed colorspace info
+}
+
+export interface LayoutInfo {
+  has_positioning_data: boolean;
+  coordinate_system: string;
+  bbox_format: string;
+  font_flags_decoded: boolean;
+  color_format: string;
 }
 
 export interface PDFContent {
@@ -60,6 +124,7 @@ export interface PDFProcessingResult {
   metadata?: PDFMetadata;
   content?: PDFContent;
   images?: PDFImageInfo[];
+  layout_info?: LayoutInfo;
   error?: string;
 }
 
