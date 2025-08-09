@@ -1,9 +1,34 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom'
+import { FileText, Settings } from 'lucide-react'
 import './App.css'
 import { DocumentsList } from './pages/DocumentsList'
 import { DocumentDetail } from './pages/DocumentDetail'
 import { AdminDashboard } from './pages/admin/AdminDashboard'
+
+// Navigation component to access location
+const Navigation = () => {
+  const location = useLocation();
+  
+  return (
+    <nav>
+      <Link 
+        to="/" 
+        className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
+      >
+        <FileText className="w-4 h-4" />
+        Documents
+      </Link>
+      <Link 
+        to="/admin" 
+        className={`nav-link ${location.pathname === '/admin' ? 'active' : ''}`}
+      >
+        <Settings className="w-4 h-4" />
+        Admin Panel
+      </Link>
+    </nav>
+  );
+};
 
 function App() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
@@ -22,11 +47,18 @@ function App() {
     <Router>
       <div className={`app ${isMobile ? 'mobile' : 'desktop'}`}>
         <header className="app-header">
-          <h1>DEHN Document Platform</h1>
-          <nav>
-            <Link to="/" className="nav-link">Documents</Link>
-            <Link to="/admin" className="nav-link">Admin Panel</Link>
-          </nav>
+          <div className="header-content">
+            <div className="logo-section">
+              <div className="logo">
+                D
+              </div>
+              <div>
+                <h1>DEHN Document Platform</h1>
+                <p className="subtitle">Lightning Protection Systems</p>
+              </div>
+            </div>
+            <Navigation />
+          </div>
         </header>
         
         <main className="app-main">
