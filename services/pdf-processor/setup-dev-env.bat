@@ -79,7 +79,7 @@ if not exist ".env" (
     ) else (
         (
         echo # PDF Processor Environment Variables
-        echo PORT=8080
+        echo PORT=3095
         echo HOST=0.0.0.0
         echo DEBUG=true
         ) > .env
@@ -93,12 +93,12 @@ echo 📝 Creating development runner...
 echo @echo off
 echo REM Development runner for PDF processor
 echo echo 🚀 Starting PDF Processor in Development Mode
-echo echo 📡 Server will be available at: http://127.0.0.1:8080
+echo echo 📡 Server will be available at: http://127.0.0.1:3095
 echo echo 🔄 Auto-reload enabled
 echo echo 🐛 Debug mode enabled
 echo echo.
 echo set DEBUG=true
-echo set PORT=8080
+echo set PORT=3095
 echo set HOST=127.0.0.1
 echo python main.py
 ) > run-dev.bat
@@ -118,4 +118,4 @@ echo.
 echo 4. Format code:
 echo    black .
 echo.
-echo 🌐 The development server will run at: http://127.0.0.1:8080
+echo 🌐 The development server will run at: http://127.0.0.1:3095

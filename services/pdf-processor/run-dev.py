@@ -15,11 +15,11 @@ def main():
     """Run the development server."""
     # Set development environment
     os.environ.setdefault("DEBUG", "true")
-    os.environ.setdefault("PORT", "8080")
+    os.environ.setdefault("PORT", "3095")
     os.environ.setdefault("HOST", "127.0.0.1")
 
     print("🚀 Starting PDF Processor in Development Mode")
-    print(f"📡 Server will be available at: http://127.0.0.1:8080")
+    print(f"📡 Server will be available at: http://127.0.0.1:3095")
     print("🔄 Auto-reload enabled")
     print("🐛 Debug mode enabled")
     print()

@@ -145,11 +145,11 @@ pip install -r requirements.txt
 python main.py
 ```
 
-The service will start on `http://localhost:8080` by default.
+The service will start on `http://localhost:3095` by default.
 
 ### Environment Variables
 ```bash
-PORT=8080          # Server port
+PORT=3095          # Server port
 HOST=0.0.0.0       # Server host  
 DEBUG=false        # Debug mode
 ```
@@ -163,7 +163,7 @@ python test_processor.py sample.pdf
 
 ### Using curl
 ```bash
-curl -X POST http://localhost:8080/extract \
+curl -X POST http://localhost:3095/extract \
   -F "file=@sample.pdf" \
   -H "Accept: application/json" | jq
 ```
@@ -172,7 +172,7 @@ curl -X POST http://localhost:8080/extract \
 The test script provides detailed analysis:
 ```
 🧪 Testing PDF processor with file: sample.pdf
-📡 Server URL: http://localhost:8080
+📡 Server URL: http://localhost:3095
 🏥 Checking server health...
 ✅ Server is healthy
 📄 Processing PDF...

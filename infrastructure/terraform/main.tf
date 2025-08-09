@@ -138,12 +138,12 @@ resource "google_cloud_run_service" "pdf_processor" {
         image = "gcr.io/${var.project_id}/dehn-pdf-processor:latest"
         
         ports {
-          container_port = 3001
+          container_port = 3095
         }
         
         env {
           name  = "PORT"
-          value = "3001"
+          value = "3095"
         }
         
         env {
@@ -187,12 +187,12 @@ resource "google_cloud_run_service" "admin_backend" {
         image = "gcr.io/${var.project_id}/dehn-admin-backend:latest"
         
         ports {
-          container_port = 3001
+          container_port = 3091
         }
         
         env {
           name  = "PORT"
-          value = "3001"
+          value = "3091"
         }
         
         env {
@@ -260,12 +260,12 @@ resource "google_cloud_run_service" "user_backend" {
         image = "gcr.io/${var.project_id}/dehn-user-backend:latest"
         
         ports {
-          container_port = 3002
+          container_port = 3090
         }
         
         env {
           name  = "PORT"
-          value = "3002"
+          value = "3090"
         }
         
         env {

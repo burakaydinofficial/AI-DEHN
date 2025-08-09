@@ -46,11 +46,11 @@ DEHN/
 
 | Service | URL | Purpose |
 |---------|-----|---------|
-| PDF Processor | http://localhost:8080 | PDF analysis & image extraction |
-| Admin Backend | http://localhost:3001 | Admin API endpoints |
-| User Backend | http://localhost:3002 | User API endpoints |
-| Admin Frontend | http://localhost:5173 | Admin web interface |
-| Mobile Frontend | http://localhost:5174 | Mobile web interface |
+| PDF Processor | http://localhost:3095 | PDF analysis & image extraction |
+| Admin Backend | http://localhost:3091 | Admin API endpoints |
+| User Backend | http://localhost:3090 | User API endpoints |
+| Admin Frontend | http://localhost:8091 | Admin web interface |
+| User Frontend | http://localhost:8090 | Mobile web interface |
 
 ## API Endpoints
 
@@ -126,17 +126,17 @@ Use the provided REST files or tools like Postman:
 ```bash
 # Test PDF processor
 curl -X POST -F "file=@example-files/example-flyer.pdf" \
-  http://localhost:8080/extract
+  http://localhost:3095/extract
   -F "file=@test.pdf"
 
 # Test admin backend health
-curl http://localhost:3001/health
+curl http://localhost:3091/health
 ```
 
 ### Frontend Testing
 Navigate to the respective URLs in your browser:
-- Admin: http://localhost:5173
-- Mobile: http://localhost:5174
+- Admin: http://localhost:8091
+- User: http://localhost:8090
 
 ## Deployment
 
@@ -203,7 +203,7 @@ Navigate to the respective URLs in your browser:
 - `AI_API_KEY` - Google Gemini API key
 
 **PDF Processor:**
-- `PORT` - Server port (default: 8080)
+- `PORT` - Server port (default: 3095)
 - `DEBUG` - Debug mode (true/false)
 
 ## Next Steps

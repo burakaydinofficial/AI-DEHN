@@ -4,11 +4,11 @@
 
 | Service | Port | URL | Purpose |
 |---------|------|-----|---------|
-| PDF Processor | **8080** | http://localhost:8080 | PDF analysis & image extraction |
-| Admin Backend | **3001** | http://localhost:3001 | Admin API |
-| User Backend | **3002** | http://localhost:3002 | User API |
-| Admin Frontend | **5173** | http://localhost:5173 | Admin panel (Vite default) |
-| Mobile Frontend | **5174** | http://localhost:5174 | Mobile app (Vite + 1) |
+| PDF Processor | **3095** | http://localhost:3095 | PDF analysis & image extraction |
+| Admin Backend | **3091** | http://localhost:3091 | Admin API |
+| User Backend | **3090** | http://localhost:3090 | User API |
+| Admin Frontend | **8091** | http://localhost:8091 | Admin panel (desktop-first) |
+| User Frontend | **8090** | http://localhost:8090 | Mobile app (mobile-first) |
 | MinIO Storage | **9000** | http://localhost:9000 | S3-compatible storage |
 | MinIO Console | **9001** | http://localhost:9001 | MinIO web interface |
 
@@ -47,7 +47,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 - Always use `PORT` not `port`
 - Always use `HOST=0.0.0.0` in containers
 - Service-to-service communication uses service names (e.g., `http://pdf-processor:8080`)
-- External access uses localhost (e.g., `http://localhost:8080`)
+- External access uses localhost (e.g., `http://localhost:3095`)
 
 ## 🔧 **Development Rules**
 
@@ -66,15 +66,15 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 ### **Service Communication:**
 - **Internal** (container-to-container): Use service names (`http://pdf-processor:8080`)
-- **External** (browser/testing): Use localhost (`http://localhost:8080`)
+- **External** (browser/testing): Use localhost (`http://localhost:3095`)
 - **Environment variables**: Support both internal and external URLs
 
 ## 🧪 **Testing Standards**
 
 ### **Default Test URLs:**
-- PDF Processor: `http://localhost:8080`
-- Admin Backend: `http://localhost:3001`
-- User Backend: `http://localhost:3002`
+- PDF Processor: `http://localhost:3095`
+- Admin Backend: `http://localhost:3091`
+- User Backend: `http://localhost:3090`
 
 ### **Test Output Organization:**
 - All test outputs go to service-specific folders:

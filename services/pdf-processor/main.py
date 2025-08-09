@@ -454,7 +454,7 @@ def server_error(error):
 
 def main():
     """Main function to start the server."""
-    port = int(os.getenv('PORT', 8080))
+    port = int(os.getenv('PORT', 3095))
     host = os.getenv('HOST', '0.0.0.0')
     debug = os.getenv('DEBUG', 'false').lower() == 'true'
     

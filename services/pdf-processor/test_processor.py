@@ -9,7 +9,7 @@ import json
 import sys
 from pathlib import Path
 
-def test_pdf_processor(pdf_path: str, server_url: str = "http://localhost:8080"):
+def test_pdf_processor(pdf_path: str, server_url: str = "http://localhost:3095"):
     """Test the PDF processor with enhanced layout information."""
     
     print(f"🧪 Testing PDF processor with file: {pdf_path}")
@@ -161,11 +161,11 @@ def main():
     if len(sys.argv) < 2:
         print("Usage: python test_pdf_processor.py <pdf_file_path> [server_url]")
         print("Example: python test_pdf_processor.py sample.pdf")
-        print("Example: python test_pdf_processor.py sample.pdf http://localhost:8080")
+        print("Example: python test_pdf_processor.py sample.pdf http://localhost:3095")
         return
     
     pdf_path = sys.argv[1]
-    server_url = sys.argv[2] if len(sys.argv) > 2 else "http://localhost:8080"
+    server_url = sys.argv[2] if len(sys.argv) > 2 else "http://localhost:3095"
     
     test_pdf_processor(pdf_path, server_url)
 

@@ -31,7 +31,7 @@ WORKDIR /app
 COPY --from=builder /app/ ./
 
 # Expose Vite dev server port
-EXPOSE 5174
+EXPOSE 8090
 
 # Run dev server
 CMD ["npm", "run", "dev", "--workspace=apps/mobile-frontend", "--", "--host", "0.0.0.0"]

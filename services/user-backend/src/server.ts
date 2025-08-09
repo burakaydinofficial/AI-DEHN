@@ -11,12 +11,12 @@ const app = express();
 
 // Configuration
 const config = {
-  port: parseInt(process.env.PORT || '3002'),
+  port: parseInt(process.env.PORT || '3090'),
   dbUrl: process.env.DATABASE_URL || 'sqlite:./user.db',
   jwtSecret: process.env.JWT_SECRET || 'user-jwt-secret-change-in-production',
   aiApiKey: process.env.AI_API_KEY || '',
-  pdfProcessorUrl: process.env.PDF_PROCESSOR_URL || 'http://localhost:8080',
-  corsOrigins: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:5174'],
+  pdfProcessorUrl: process.env.PDF_PROCESSOR_URL || 'http://localhost:3095',
+  corsOrigins: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:8090'],
   environment: (process.env.NODE_ENV as any) || 'development'
 };
 

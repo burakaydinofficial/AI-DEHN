@@ -58,14 +58,14 @@ docker-compose -f docker-compose.dev.yml up --build
 
 2. **Test the health endpoint**:
    ```bash
-   curl http://localhost:8080/health
+   curl http://localhost:3095/health
    ```
 
 3. **Test PDF processing** (using example file):
    ```bash
    curl -X POST \
      -F "pdf=@../../example-files/example-flyer.pdf" \
-     http://localhost:8080/process
+     http://localhost:3095/process
    ```
 
 ## 🛠️ Development Commands
@@ -137,8 +137,8 @@ make setup
 
 ### Port Already in Use
 ```bash
-# Find and kill process using port 8080
-lsof -ti:8080 | xargs kill -9
+# Find and kill process using port 3095
+lsof -ti:3095 | xargs kill -9
 
 # Or use different port
 PORT=8081 make dev

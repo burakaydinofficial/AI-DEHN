@@ -46,11 +46,11 @@ docker-compose up --build
 ```
 
 This will start:
-- 🐍 PDF Processor: http://localhost:8080
-- 🔐 Admin Backend: http://localhost:3001
-- 👤 User Backend: http://localhost:3002
-- 💻 Admin Frontend: http://localhost:5173
-- 📱 Mobile Frontend: http://localhost:5174
+- 🐍 PDF Processor: http://localhost:3095
+- 🔐 Admin Backend: http://localhost:3091
+- 👤 User Backend: http://localhost:3090
+- 💻 Admin Frontend: http://localhost:8091
+- 📱 User Frontend: http://localhost:8090
 - 🗄️ MinIO (S3): http://localhost:9000 (Console: http://localhost:9001)
 
 ### 3. Test PDF Processing
@@ -59,7 +59,7 @@ This will start:
 npm run test:pdf
 
 # Or manually:
-curl -X POST -F "file=@example-files/example-flyer.pdf" http://localhost:8080/extract
+curl -X POST -F "file=@example-files/example-flyer.pdf" http://localhost:3095/extract
 ```
 
 ## 🛠️ Development Commands
@@ -75,19 +75,19 @@ curl -X POST -F "file=@example-files/example-flyer.pdf" http://localhost:8080/ex
 
 ## 📋 API Endpoints
 
-### PDF Processor (Port 8080)
+### PDF Processor (Port 3095)
 - `GET /health` - Health check
 - `POST /extract` - Extract PDF content (returns JSON)
 - `POST /extract/zip` - Extract PDF content + images (returns ZIP)
 
-### Admin Backend (Port 3001)
+### Admin Backend (Port 3091)
 - `GET /health` - Health check
 - `POST /api/auth/*` - Authentication endpoints
 - `GET|POST|PUT|DELETE /api/documents/*` - Document management
 - `GET|POST|PUT|DELETE /api/users/*` - User management
 - `POST /api/ai/*` - AI processing endpoints
 
-### User Backend (Port 3002)
+### User Backend (Port 3090)
 - `GET /health` - Health check
 - `POST /api/auth/*` - User authentication
 - `GET /api/documents/*` - Document access (user's own)
