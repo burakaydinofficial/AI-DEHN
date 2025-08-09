@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { User, ApiResponse, PaginatedResponse, UpdateUserRequest } from '../../types';
+import { User, ApiResponse, PaginatedResponse, UpdateUserRequest } from '../../types/api';
 
 export const usersRouter = Router();
 

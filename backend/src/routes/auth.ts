@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { AuthRequest, AuthResponse, ApiResponse } from '../types';
+import { AuthRequest, AuthResponse, ApiResponse } from '../types/api';
 
 export const authRouter = Router();
 

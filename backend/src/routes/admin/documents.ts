@@ -12,7 +12,7 @@ import {
   ApiResponse, 
   PaginatedResponse,
   PDFProcessingResult 
-} from '../../types';
+} from '../../types/api';
 
 export const documentsRouter = Router();
 

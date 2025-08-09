@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import type { ApiResponse, Document, PaginatedResponse } from '../../types';
+import type { ApiResponse, Document, PaginatedResponse } from '../../types/api';
 import { db } from '../../server';
 
 export const documentsRouter = Router();
