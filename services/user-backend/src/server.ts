@@ -4,7 +4,6 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { MongoClient, Db } from 'mongodb';
-import { Storage } from '@google-cloud/storage';
 
 // Load environment variables
 dotenv.config();
@@ -25,7 +24,6 @@ const config = {
 
 // Global database connection
 let db: Db;
-let storage: Storage;
 
 // Initialize database connection
 async function initializeDatabase() {
@@ -34,6 +32,7 @@ async function initializeDatabase() {
     await client.connect();
     db = client.db(config.databaseName);
     console.log(`✅ Connected to MongoDB: ${config.databaseName}`);
+    await initializeCollections();
   } catch (error) {
     console.error('❌ Failed to connect to MongoDB:', error);
     if (config.environment === 'development') {
@@ -44,8 +43,20 @@ async function initializeDatabase() {
   }
 }
 
+async function initializeCollections() {
+  if (!db) return;
+  const collections = await db.listCollections().toArray();
+  const names = collections.map(c => c.name);
+  if (!names.includes('documents')) {
+    await db.createCollection('documents');
+    console.log('✅ Created collection: documents');
+  }
+  await db.collection('documents').createIndex({ uploadedAt: -1 });
+  await db.collection('documents').createIndex({ status: 1 });
+}
+
 // Make database available globally
-export { db, storage, config };
+export { db, config };
 
 // Initialize connections
 initializeDatabase();
@@ -70,13 +81,12 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API routes (basic structure for now)
+// API routes
+import { documentsRouter } from './routes/documents';
+app.use('/api/documents', documentsRouter);
+
 app.use('/api/auth', (req, res) => {
   res.json({ message: 'User auth endpoints coming soon...' });
-});
-
-app.use('/api/documents', (req, res) => {
-  res.json({ message: 'User document endpoints coming soon...' });
 });
 
 app.use('/api/ai', (req, res) => {
