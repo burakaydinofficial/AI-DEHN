@@ -4,13 +4,14 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { MongoClient, Db } from 'mongodb';
-import { Storage } from '@google-cloud/storage';
+// Removed direct Storage import, using StorageProvider abstraction instead
 import { authRouter } from './routes/auth';
 import { documentsRouter } from './routes/documents';
 import { usersRouter } from './routes/users';
 import { aiRouter } from './routes/ai';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
+import { setDb, setStorage, setConfig } from './utils/context';
 
 // Load environment variables
 dotenv.config();
@@ -32,12 +33,16 @@ const config = {
   googleApplicationCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS,
   privateBucket: process.env.MINIO_BUCKET_PRIVATE || 'dehn-private',
   publicBucket: process.env.MINIO_BUCKET_PUBLIC || 'dehn-public',
-  minioEndpoint: process.env.MINIO_ENDPOINT || 'http://localhost:9000'
+  minioEndpoint: process.env.MINIO_ENDPOINT || 'http://localhost:9000',
+  minioAccessKey: process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID || '',
+  minioSecretKey: process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY || '',
+  minioUseSSL: process.env.MINIO_USE_SSL === 'true' || false,
 };
 
 // Global database connection
 let db: Db;
-let storage: Storage;
+// Replace concrete GCS Storage type with our provider interface
+let storageProvider: import('./utils/storage').StorageProvider;
 
 // Initialize database connection
 async function initializeDatabase() {
@@ -63,16 +68,21 @@ async function initializeDatabase() {
 // Initialize storage client
 async function initializeStorage() {
   try {
-    if (config.googleApplicationCredentials && config.googleCloudProjectId) {
-      storage = new Storage({
-        projectId: config.googleCloudProjectId,
-        keyFilename: config.googleApplicationCredentials
-      });
-      console.log('✅ Google Cloud Storage initialized');
-    } else {
-      console.log('📦 Using MinIO storage for development');
-      // MinIO configuration would go here
-    }
+    const { createStorageProvider } = await import('./utils/storage');
+    storageProvider = createStorageProvider({
+      googleCloudProjectId: config.googleCloudProjectId,
+      googleApplicationCredentials: config.googleApplicationCredentials,
+      privateBucket: config.privateBucket,
+      publicBucket: config.publicBucket,
+      minio: {
+        endPoint: config.minioEndpoint,
+        accessKey: config.minioAccessKey,
+        secretKey: config.minioSecretKey,
+        useSSL: config.minioUseSSL,
+      }
+    });
+    await storageProvider.ensureBuckets();
+    console.log('✅ Storage provider initialized');
   } catch (error) {
     console.error('❌ Failed to initialize storage:', error);
   }
@@ -108,11 +118,16 @@ async function initializeCollections() {
 }
 
 // Make database and storage available globally
-export { db, storage, config };
+export { db, /* storage */ storageProvider as storage, config };
 
 // Initialize connections
-initializeDatabase();
-initializeStorage();
+initializeDatabase().then(() => {
+  if (db) setDb(db);
+});
+initializeStorage().then(() => {
+  if (storageProvider) setStorage(storageProvider);
+});
+setConfig(config);
 
 // Middleware
 app.use(helmet());

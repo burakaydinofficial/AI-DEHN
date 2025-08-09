@@ -43,7 +43,7 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
     page: number;
     limit: number;
     total: number;
-    totalPages: number;
+    pages: number;
   };
 }
 
@@ -54,33 +54,64 @@ export interface UpdateUserRequest {
 }
 
 // Document types
+export interface StoragePaths {
+  originalPdf?: string; // private bucket path
+  analysisJson?: string; // private bucket path
+  zipBundle?: string; // private bucket path
+  imagesPrefix?: string; // private bucket prefix for images/
+}
+
+export interface ExtractionStats {
+  pageCount?: number;
+  totalChars?: number;
+  imagesCount?: number;
+}
+
 export interface Document {
   id: string;
   filename: string;
   originalName: string;
   size: number;
   mimeType: string;
+  uploadedBy: string;
   uploadedAt: Date;
-  status: 'processing' | 'completed' | 'failed';
+  status: 'uploaded' | 'processing' | 'completed' | 'failed';
+  processedAt?: Date;
+  error?: string;
   metadata?: PDFMetadata;
-  pages?: number;
   extractedText?: string;
+  storage?: StoragePaths;
+  stats?: ExtractionStats;
 }
 
 export interface DocumentUploadResponse {
   success: boolean;
-  documentId: string;
-  filename: string;
+  document?: Document;
+  documentId?: string;
+  filename?: string;
   status: string;
   message?: string;
 }
 
 export interface PDFProcessingResult {
   success: boolean;
-  pages: any[];
   metadata: PDFMetadata;
+  content?: {
+    full_text?: string;
+    pages?: Array<{
+      page_number: number;
+      text: string;
+      char_count: number;
+      page_dimensions?: {
+        width: number;
+        height: number;
+        rotation: number;
+      }
+    }>;
+    total_chars?: number;
+    images_count?: number;
+  };
   images?: any[];
-  totalChars: number;
 }
 
 // PDF Processing types
