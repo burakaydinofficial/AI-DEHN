@@ -55,9 +55,16 @@ export interface UpdateUserRequest {
 
 // Document types
 export interface StoragePaths {
-  originalPdf?: string; // private bucket path
-  analysisJson?: string; // private bucket path
-  zipBundle?: string; // private bucket path
+  originalPdf?: string; // private bucket URI
+  originalKey?: string; // private bucket key
+  analysisJson?: string; // private bucket URI
+  analysisKey?: string;  // private bucket key
+  zipBundle?: string;    // private bucket URI
+  zipKey?: string;       // private bucket key
+  reducedJson?: string;  // private bucket URI
+  reducedKey?: string;   // private bucket key
+  chunksJson?: string;   // private bucket URI
+  chunksKey?: string;    // private bucket key
   imagesPrefix?: string; // private bucket prefix for images/
 }
 
@@ -78,6 +85,14 @@ export interface TranslationArtifact {
   sourceTextLang?: string;
 }
 
+export interface PublishedVariant {
+  language: string;
+  version: 'original' | 'generated' | string;
+  url: string; // public URL
+  publishedAt: Date;
+  artifactKey: string;
+}
+
 export interface Document {
   id: string;
   filename: string;
@@ -94,6 +109,7 @@ export interface Document {
   storage?: StoragePaths;
   stats?: ExtractionStats;
   translations?: TranslationArtifact[];
+  published?: PublishedVariant[];
 }
 
 export interface DocumentUploadResponse {
