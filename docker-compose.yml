@@ -22,15 +22,15 @@ services:
   # Backend - Consolidated Express TypeScript API for all operations
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     ports:
-      - "3000:3000"
+      - "3001:3001"
     env_file:
       - .env.local
     environment:
       - NODE_ENV=production
-      - PORT=3000
+      - PORT=3001
       - PDF_PROCESSOR_URL=http://pdf-processor:3002
       - MONGODB_URI=mongodb://mongodb:27017/dehn
       - STORAGE_ROOT=/app/storage
@@ -40,7 +40,7 @@ services:
     volumes:
       - storage_data:/app/storage
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
       interval: 30s
       timeout: 10s
       start_period: 5s
@@ -49,12 +49,12 @@ services:
   # Frontend - Consolidated React application
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
     ports:
-      - "3001:80"
+      - "3000:80"
     environment:
-      - VITE_BACKEND_URL=http://backend:3000
+      - VITE_BACKEND_URL=http://backend:3001
     depends_on:
       - backend
     healthcheck:
