@@ -128,6 +128,46 @@ export interface PDFProcessingResult {
   error?: string;
 }
 
+// Storage and processing artifacts
+export interface StoragePaths {
+  originalPdf?: string; // private bucket URI
+  originalKey?: string; // private bucket key
+  analysisJson?: string; // private bucket URI
+  analysisKey?: string;  // private bucket key
+  zipBundle?: string;    // private bucket URI
+  zipKey?: string;       // private bucket key
+  reducedJson?: string;  // private bucket URI
+  reducedKey?: string;   // private bucket key
+  chunksJson?: string;   // private bucket URI
+  chunksKey?: string;    // private bucket key
+  imagesPrefix?: string; // private bucket prefix for images/
+}
+
+export interface ExtractionStats {
+  pageCount?: number;
+  totalChars?: number;
+  imagesCount?: number;
+}
+
+export interface TranslationArtifact {
+  name: string;
+  contentType: string;
+  size: number;
+  uri: string;
+  uploadedAt: Date;
+  language?: string;
+  sourceLayoutLang?: string;
+  sourceTextLang?: string;
+}
+
+export interface PublishedVariant {
+  language: string;
+  version: 'original' | 'generated' | string;
+  url: string; // public URL
+  publishedAt: Date;
+  artifactKey: string;
+}
+
 // Document Management
 export interface Document {
   id: string;
@@ -142,6 +182,11 @@ export interface Document {
   content?: string;
   status: 'uploaded' | 'processing' | 'processed' | 'failed';
   error?: string;
+  // Extended processing data
+  storage?: StoragePaths;
+  stats?: ExtractionStats;
+  translations?: TranslationArtifact[];
+  published?: PublishedVariant[];
 }
 
 export interface DocumentUploadRequest {

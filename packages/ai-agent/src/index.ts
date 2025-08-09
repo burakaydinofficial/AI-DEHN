@@ -1,42 +1,7 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import type { AIPrompt, AIResponse, ChatMessage, ChatSession } from '@dehn/api-models';
 
-// Local type definitions (previously imported from @dehn/api-models)
-export interface AIPrompt {
-  id: string;
-  text: string;
-  context?: string;
-  temperature?: number;
-  maxTokens?: number;
-}
-
-export interface AIResponse {
-  id: string;
-  text: string;
-  model: string;
-  usage: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
-  finishReason: string;
-  createdAt: Date;
-}
-
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  timestamp: Date;
-}
-
-export interface ChatSession {
-  id: string;
-  userId: string;
-  title?: string;
-  messages: ChatMessage[];
-  createdAt: Date;
-  updatedAt: Date;
-}
+export type { AIPrompt, AIResponse, ChatMessage, ChatSession } from '@dehn/api-models';
 
 export interface AIAgentConfig {
   apiKey: string;
@@ -264,55 +229,6 @@ export class AIAgent {
 
   private generateId(): string {
     return Math.random().toString(36).substring(2) + Date.now().toString(36);
-  }
-}
-
-// Utility functions for common AI tasks
-export class AIUtils {
-  /**
-   * Clean and prepare text for AI processing
-   */
-  static cleanText(text: string): string {
-    return text
-      .replace(/\s+/g, ' ')
-      .replace(/[^\w\s.,!?;:()\-]/g, '')
-      .trim();
-  }
-
-  /**
-   * Split long text into chunks for processing
-   */
-  static chunkText(text: string, maxChars: number = 4000): string[] {
-    if (text.length <= maxChars) {
-      return [text];
-    }
-
-    const chunks: string[] = [];
-    const sentences = text.split(/[.!?]+/);
-    let currentChunk = '';
-
-    for (const sentence of sentences) {
-      if ((currentChunk + sentence).length > maxChars && currentChunk) {
-        chunks.push(currentChunk.trim());
-        currentChunk = sentence;
-      } else {
-        currentChunk += (currentChunk ? '. ' : '') + sentence;
-      }
-    }
-
-    if (currentChunk) {
-      chunks.push(currentChunk.trim());
-    }
-
-    return chunks;
-  }
-
-  /**
-   * Calculate estimated token count (rough approximation)
-   */
-  static estimateTokens(text: string): number {
-    // Rough approximation: ~4 characters per token for English text
-    return Math.ceil(text.length / 4);
   }
 }
 
