@@ -3,7 +3,6 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
-import { AppConfig } from '@dehn/api-models';
 import { authRouter } from './routes/auth';
 import { documentsRouter } from './routes/documents';
 import { usersRouter } from './routes/users';
@@ -17,7 +16,7 @@ dotenv.config();
 const app = express();
 
 // Configuration
-const config: AppConfig = {
+const config = {
   port: parseInt(process.env.PORT || '3001'),
   dbUrl: process.env.DATABASE_URL || 'sqlite:./admin.db',
   jwtSecret: process.env.JWT_SECRET || 'admin-jwt-secret-change-in-production',

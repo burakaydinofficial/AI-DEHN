@@ -4,12 +4,12 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copy service package files and install dependencies
-COPY services/admin-backend/package*.json ./
+COPY package*.json ./
 RUN npm install --no-package-lock
 
 # Copy service source code
-COPY services/admin-backend/src ./src
-COPY services/admin-backend/tsconfig.json ./
+COPY src ./src
+COPY tsconfig.json ./
 
 # Build the application
 RUN npm run build
