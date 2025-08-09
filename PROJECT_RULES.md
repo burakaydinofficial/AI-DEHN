@@ -48,9 +48,21 @@
 
 ### **Phase 4: Publishing**
 1. Admin selects approved versions for publishing
-2. Selected content moved to **public bucket**
-3. User app (8090) accesses via user backend (3090)
-4. Layout-aware rendering for multi-language display
+2. **Image Hash Processing**:
+   - Generate SHA-256 hashes for all images
+   - Copy images to public bucket with hash filenames (e.g., `a1b2c3d4.png`)
+   - Update JSON references to use hash-based names
+   - Database stores hash → metadata mappings
+3. **Content Baking**:
+   - Pre-render complete page layouts as JSON files
+   - Include exact positioning data for pixel-perfect rendering
+   - Store in public bucket for direct access (no API calls needed)
+4. **Layout Validation**:
+   - Ensure images positioned exactly as in source PDF
+   - Preserve intentional text/image overlays from original design
+   - Detect and prevent unintended text/image collisions
+   - Validate print compatibility and pagination
+5. **Public Distribution**: Content available via CDN for global access
 
 ## 🤖 **AI INTEGRATION RULES**
 
@@ -68,6 +80,55 @@
 - Extract precise positioning data (x, y, width, height)
 - Maintain font properties and styling information
 - Preserve reading order and document structure
+
+## 🖼️ **IMAGE & ASSET MANAGEMENT RULES**
+
+### **Hash-Based Image System:**
+- **Naming**: Use SHA-256 hashes as filenames (e.g., `a1b2c3d4e5f6.png`)
+- **Database Mapping**: Store hash → original filename → metadata relationships
+- **Deduplication**: Identical images share same hash, stored once
+- **Caching**: Hash-based names enable efficient CDN caching
+
+### **Image Processing Pipeline:**
+- **Extraction**: Maintain original quality and metadata from source PDF
+- **Optimization**: Generate web-optimized versions without quality loss
+- **Format Selection**: PNG for graphics, JPEG for photos, WebP when supported
+- **Resolution Variants**: Create multiple sizes for responsive display
+
+### **Layout Positioning Rules:**
+- **Pixel Perfect**: Match exact positioning from source PDF
+- **Overlay Preservation**: Maintain intentional text-over-image designs
+- **Collision Prevention**: Detect and prevent unintended overlapping
+- **Print Compatibility**: Ensure layouts work in print media
+- **Responsive Scaling**: Proportional adjustments for different screen sizes
+
+## 📄 **CONTENT BAKING RULES**
+
+### **JSON Pre-Rendering:**
+- **Complete Layouts**: Store full page structure in JSON files
+- **Direct Access**: Enable frontend to read from public bucket without API calls
+- **Hash References**: All image references use SHA-256 hash names
+- **Print Optimization**: Include print-specific layout data
+- **Language Variants**: Separate JSON files for each language version
+
+### **Public Bucket Structure:**
+```
+dehn-public/
+├── documents/
+│   └── {document-id}/
+│       ├── en/
+│       │   ├── pages.json
+│       │   └── print.json
+│       └── tr/
+│           ├── pages.json
+│           └── print.json
+├── images/
+│   ├── a1b2c3d4e5f6.png
+│   └── f6e5d4c3b2a1.jpg
+└── assets/
+    ├── fonts/
+    └── styles/
+```
 
 ## 📁 **FILE STRUCTURE RULES**
 

@@ -225,32 +225,36 @@ curl -X POST -F "file=@example-files/example-flyer.pdf" http://localhost:3095/ex
 
 ## 🧪 Advanced PDF Processing Features
 
-The PDF processor is optimized for **layout-aware extraction** crucial for multi-language publishing:
+The PDF processor is optimized for **pixel-perfect layout preservation** crucial for professional publishing:
 
-### Layout-Preserving Text Analysis
-- **Positioning Data**: Precise coordinates (x, y, width, height) for all text elements
-- **Font Properties**: Family, size, weight, style, color for styling preservation
-- **Text Hierarchy**: Document structure → Sections → Paragraphs → Lines → Words
-- **Language Detection**: Automatic language tagging for each text segment
-- **Reading Order**: Logical flow detection for proper content sequencing
+### Precision Layout Analysis
+- **Exact Positioning**: Pixel-accurate coordinates (x, y, width, height) for all elements
+- **Z-Index Detection**: Layer ordering for proper text/image overlay relationships
+- **Intentional Overlays**: Preserve deliberate text-over-image designs from source PDF
+- **Collision Detection**: Prevent unintended text/image overlapping in generated content
+- **Print Boundaries**: Page margins, bleed areas, and print-safe zones
+- **Font Metrics**: Precise line height, character spacing, and baseline positioning
 
-### Advanced Image Handling
-- **Context-Aware Extraction**: Images with surrounding text relationships
-- **Multi-Format Support**: PNG, JPEG extraction with quality preservation
-- **Positioning Metadata**: Bounding boxes and transformation matrices
-- **Resolution Optimization**: Multiple resolutions for responsive display
+### Advanced Image Processing
+- **SHA-256 Hashing**: Content-based naming for efficient caching and deduplication
+- **Context Preservation**: Maintain relationships between images and surrounding text
+- **Multi-Resolution**: Generate optimized versions for web, print, and mobile
+- **Format Optimization**: PNG for graphics, JPEG for photos, WebP for modern browsers
+- **Metadata Retention**: DPI, color space, and print quality information
 
-### Structure & Semantics
-- **Component Detection**: Headers, paragraphs, lists, tables, captions
-- **Cross-Language Matching**: Identify equivalent content across language variants
-- **Layout Templates**: Reusable layout patterns for consistent rendering
-- **Responsive Breakpoints**: Layout adaptations for different screen sizes
+### Layout Intelligence
+- **Component Recognition**: Headers, paragraphs, lists, tables, captions, sidebars
+- **Reading Flow**: Logical content sequence across columns and pages
+- **Responsive Breakpoints**: Layout adaptations that maintain design integrity
+- **Print Optimization**: Ensure layouts work perfectly in print media
+- **Cross-Language Compatibility**: Layout adjustments for different text lengths
 
 ### Processing Outputs
-- **Structured JSON**: Complete document structure with metadata
-- **ZIP Archives**: Combined JSON + extracted images for complete document packages  
-- **Markdown Chunks**: Content segments optimized for translation workflows
-- **Layout Maps**: Rendering instructions for accurate display recreation
+- **Structured JSON**: Complete document structure with pixel-perfect positioning
+- **Hash-Named Assets**: SHA-256 filenames for images with metadata mapping
+- **Print-Ready Layouts**: Optimized for exact reproduction in print format
+- **CDN-Optimized**: Pre-compressed assets ready for global content delivery
+- **Direct Access**: No API dependency - frontend renders from static JSON + images
 
 ## 🗄️ Storage & Database Architecture
 

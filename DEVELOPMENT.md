@@ -91,8 +91,16 @@ DEHN/
 
 **Publishing Workflow:**
 - `GET /api/documents/:id/versions` - Get all versions available for publishing
-- `POST /api/documents/:id/publish` - Move selected content to public bucket
-- `GET /api/documents/:id/published` - Get published status and public access URLs
+- `POST /api/documents/:id/publish` - Process and publish selected content:
+  - Generate SHA-256 hashes for all images
+  - Copy optimized images to public bucket with hash names
+  - Create pre-baked JSON with hash-based image references
+  - Validate layout for print compatibility and overlay detection
+  - Update database with publication status and public URLs
+- `GET /api/documents/:id/published` - Get published status and CDN URLs
+- `GET /api/documents/:id/images/hashes` - Get image hash mappings
+- `POST /api/documents/:id/images/optimize` - Optimize images for web/print
+- `GET /api/documents/:id/layout/validate` - Validate pixel-perfect positioning
 
 **Authentication & User Management:**
 - `POST /api/auth/login` - Admin authentication
@@ -113,12 +121,18 @@ DEHN/
 
 ### User Backend Service (TypeScript) - Public Document Access
 - `GET /health` - Health check
-- `GET /api/documents` - List published documents with language options
-- `GET /api/documents/:id` - Get published document metadata
-- `GET /api/documents/:id/content/:lang` - Get document content in specific language
-- `GET /api/documents/:id/layout/:lang` - Get layout rendering data for language
+- `GET /api/documents` - List published documents with language availability
+- `GET /api/documents/:id` - Get published document metadata 
+- `GET /api/documents/:id/pages/:lang` - Get pre-baked page layout JSON
+- `GET /api/documents/:id/page/:pageNum/:lang` - Get specific page with hash-named images
+- `GET /api/documents/:id/print/:lang` - Get print-optimized layout
 - `GET /api/documents/search` - Search published documents
-- `GET /api/languages` - Get available languages for documents
+- `GET /api/languages` - Get available languages
+
+**Direct Public Bucket Access (No API needed):**
+- Public JSON files: `https://cdn.example.com/documents/:id/:lang/pages.json`
+- Hash-named images: `https://cdn.example.com/images/:sha256hash.png`
+- Print layouts: `https://cdn.example.com/documents/:id/:lang/print.json`
 
 ## Development Workflow
 
