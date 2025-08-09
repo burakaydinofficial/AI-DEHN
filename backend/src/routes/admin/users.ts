@@ -62,7 +62,7 @@ usersRouter.get('/', async (req: Request, res: Response, next: NextFunction) => 
 
     res.json(response);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -85,7 +85,7 @@ usersRouter.get('/:id', async (req: Request, res: Response, next: NextFunction) 
       timestamp: new Date()
     } as ApiResponse<User>);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -120,7 +120,7 @@ usersRouter.put('/:id', async (req: Request, res: Response, next: NextFunction) 
       timestamp: new Date()
     } as ApiResponse<User>);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -145,6 +145,6 @@ usersRouter.delete('/:id', async (req: Request, res: Response, next: NextFunctio
       timestamp: new Date()
     } as ApiResponse);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });

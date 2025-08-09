@@ -34,15 +34,10 @@ services:
       - PDF_PROCESSOR_URL=http://pdf-processor:3095
       - CORS_ORIGINS=http://localhost:3000
       - DATABASE_NAME=dehn
-      - MINIO_ENDPOINT=http://minio:9000
-      - MINIO_BUCKET_PRIVATE=dehn-private
-      - MINIO_BUCKET_PUBLIC=dehn-public
-      - MINIO_ACCESS_KEY=dehn-access-key
-      - MINIO_SECRET_KEY=dehn-secret-key
-      - MINIO_USE_SSL=false
+      - MONGODB_CONNECTION_STRING=mongodb://mongodb:27017/dehn
     depends_on:
       - pdf-processor
-      - minio
+      - mongodb
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3090/health"]
       interval: 30s
@@ -68,24 +63,21 @@ services:
       start_period: 5s
       retries: 3
 
-  # MinIO - S3-compatible storage for development
-  minio:
-    image: minio/minio:latest
+  # MongoDB - Document database
+  mongodb:
+    image: mongo:7-jammy
     ports:
-      - "9000:9000"  # API
-      - "9001:9001"  # Console
+      - "27017:27017"
     environment:
-      - MINIO_ROOT_USER=dehn-access-key
-      - MINIO_ROOT_PASSWORD=dehn-secret-key
-      - MINIO_DEFAULT_BUCKETS=dehn-public:public,dehn-private:none
+      - MONGO_INITDB_DATABASE=dehn
     volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
+      - mongodb_data:/data/db
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 30s
-      timeout: 20s
+      timeout: 10s
+      start_period: 5s
       retries: 3
 
 volumes:
-  minio_data:
+  mongodb_data:

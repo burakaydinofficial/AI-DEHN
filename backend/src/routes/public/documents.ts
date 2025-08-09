@@ -24,7 +24,7 @@ documentsRouter.get('/', async (req: Request, res: Response, next: NextFunction)
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
       timestamp: new Date()
     } as PaginatedResponse<Document>);
-  } catch (error) { next(error); }
+  } catch (error) { return next(error); }
 });
 
 // Public: get a document with its published variants
@@ -36,5 +36,5 @@ documentsRouter.get('/:id', async (req: Request, res: Response, next: NextFuncti
     );
     if (!doc) return res.status(404).json({ success: false, message: 'Not found', timestamp: new Date() } as ApiResponse);
     res.json({ success: true, data: doc as unknown as Document, timestamp: new Date() } as ApiResponse<Document>);
-  } catch (error) { next(error); }
+  } catch (error) { return next(error); }
 });

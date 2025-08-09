@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { MongoClient, Db } from 'mongodb';
+import { createStorageProvider } from './utils';
+import { setDb, setStorage, setConfig } from './utils/context';
 
 // Load environment variables
 dotenv.config();
@@ -88,6 +90,21 @@ async function connectToDatabase() {
     await db.collection('users').createIndex({ email: 1 }, { unique: true });
     
     console.log('✅ Database indexes created');
+    
+    // Initialize storage
+    const storageRoot = process.env.STORAGE_ROOT || '/app/storage';
+    const storage = createStorageProvider({ storageRoot });
+    await storage.ensureBuckets();
+    console.log('✅ Local file storage initialized');
+    
+    // Initialize context
+    setDb(db);
+    setStorage(storage);
+    setConfig({
+      jwtSecret: process.env.JWT_SECRET || 'dev-secret',
+      aiApiKey: process.env.AI_API_KEY,
+      storageRoot
+    });
     
   } catch (error) {
     console.error('❌ Failed to connect to MongoDB:', error);

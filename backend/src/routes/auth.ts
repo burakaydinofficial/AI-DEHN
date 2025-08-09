@@ -58,9 +58,9 @@ authRouter.post('/login', async (req: Request, res: Response, next: NextFunction
       }
     };
 
-    res.json(response);
+    return res.json(response);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -86,7 +86,7 @@ authRouter.get('/me', (req: Request, res: Response) => {
   }
 
   // Mock user data
-  res.json({
+  return res.json({
     success: true,
     data: {
       id: '1',

@@ -123,14 +123,14 @@ documentsRouter.post('/upload', upload.single('file'), async (req: Request, res:
 
     await db.collection('documents').updateOne({ id }, { $set: update });
 
-    res.json({ success: true, status: 'processing', document: { ...docRecord, ...update } } as DocumentUploadResponse);
+    return res.json({ success: true, status: 'processing', document: { ...docRecord, ...update } } as DocumentUploadResponse);
   } catch (error) {
     try {
       const db = getDb();
       const id = (req as any)._docId; // best-effort
       if (id) await db.collection('documents').updateOne({ id }, { $set: { status: 'failed', error: String(error), processedAt: new Date() } });
     } catch {}
-    next(error);
+    return return next(error);
   }
 });
 
@@ -142,9 +142,9 @@ documentsRouter.get('/:id/status', async (req: Request, res: Response, next: Nex
     if (!doc) {
       return res.status(404).json({ success: false, message: 'Document not found', timestamp: new Date() } as ApiResponse);
     }
-    res.json({ success: true, data: doc as unknown as Document, timestamp: new Date() } as ApiResponse<Document>);
+    return res.json({ success: true, data: doc as unknown as Document, timestamp: new Date() } as ApiResponse<Document>);
   } catch (error) {
-    next(error);
+    return return next(error);
   }
 });
 
@@ -168,7 +168,7 @@ documentsRouter.get('/', async (req: Request, res: Response, next: NextFunction)
       timestamp: new Date()
     } as PaginatedResponse<Document>);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -182,7 +182,7 @@ documentsRouter.get('/:id', async (req: Request, res: Response, next: NextFuncti
     }
     res.json({ success: true, data: doc as unknown as Document, timestamp: new Date() } as ApiResponse<Document>);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -193,7 +193,7 @@ documentsRouter.delete('/:id', async (req: Request, res: Response, next: NextFun
     await db.collection('documents').deleteOne({ id: req.params.id });
     res.json({ success: true, message: 'Document deleted', timestamp: new Date() } as ApiResponse);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
@@ -216,7 +216,7 @@ documentsRouter.post('/:id/translations', upload.single('file'), async (req: Req
     );
 
     res.json({ success: true, message: 'Translation uploaded', timestamp: new Date() } as ApiResponse);
-  } catch (error) { next(error); }
+  } catch (error) { return next(error); }
 });
 
 // Reduce content (detect repeated components across languages)
@@ -246,7 +246,7 @@ documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: Ne
     await db.collection('documents').updateOne({ id }, { $set: { 'storage.reducedJson': reducedUri, 'storage.reducedKey': reducedKey } });
 
     res.json({ success: true, message: 'Reduced content created', timestamp: new Date(), data: { key: reducedKey } } as ApiResponse);
-  } catch (error) { next(error); }
+  } catch (error) { return next(error); }
 });
 
 // Generate chunks of markdown with metadata
@@ -276,7 +276,7 @@ documentsRouter.post('/:id/chunks', async (req: Request, res: Response, next: Ne
     await db.collection('documents').updateOne({ id }, { $set: { 'storage.chunksJson': chunksUri, 'storage.chunksKey': chunksKey } });
 
     res.json({ success: true, message: 'Chunks generated', timestamp: new Date(), data: { key: chunksKey } } as ApiResponse);
-  } catch (error) { next(error); }
+  } catch (error) { return next(error); }
 });
 
 // Generate missing language using LLM (placeholder)
@@ -307,7 +307,7 @@ documentsRouter.post('/:id/generate-translation', async (req: Request, res: Resp
     );
 
     res.json({ success: true, message: 'Translation generated', timestamp: new Date(), data: { key: tKey } } as ApiResponse);
-  } catch (error) { next(error); }
+  } catch (error) { return next(error); }
 });
 
 // Publish selected variant to public bucket
@@ -345,5 +345,5 @@ documentsRouter.post('/:id/publish', async (req: Request, res: Response, next: N
     );
 
     res.json({ success: true, message: 'Published', timestamp: new Date(), data: { url } } as ApiResponse);
-  } catch (error) { next(error); }
+  } catch (error) { return next(error); }
 });
