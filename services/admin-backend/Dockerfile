@@ -3,12 +3,13 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy and install dependencies
-COPY package*.json ./
-RUN npm ci
+# Copy service package files and install dependencies
+COPY services/admin-backend/package*.json ./
+RUN npm install --no-package-lock
 
-# Copy source code
-COPY . ./
+# Copy service source code
+COPY services/admin-backend/src ./src
+COPY services/admin-backend/tsconfig.json ./
 
 # Build the application
 RUN npm run build
@@ -21,7 +22,7 @@ WORKDIR /app
 # Install curl for health checks
 RUN apk add --no-cache curl
 
-# Copy built application and package.json
+# Copy built application and dependencies
 COPY --from=builder /app/dist ./
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
