@@ -42,7 +42,7 @@ const config = {
 // Global database connection
 let db: Db;
 // Replace concrete GCS Storage type with our provider interface
-let storageProvider: import('./utils/storage').StorageProvider;
+let storageProvider: import('./utils/storage/index').StorageProvider;
 
 // Initialize database connection
 async function initializeDatabase() {
@@ -68,7 +68,7 @@ async function initializeDatabase() {
 // Initialize storage client
 async function initializeStorage() {
   try {
-    const { createStorageProvider } = await import('./utils/storage');
+    const { createStorageProvider } = await import('./utils/storage/index');
     storageProvider = createStorageProvider({
       googleCloudProjectId: config.googleCloudProjectId,
       googleApplicationCredentials: config.googleApplicationCredentials,

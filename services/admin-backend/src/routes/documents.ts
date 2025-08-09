@@ -1,6 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import axios from 'axios';
+import FormData from 'form-data';
+import { randomUUID } from 'crypto';
+import { getDb, getStorage, getConfig } from '../utils/context';
 import { 
   Document, 
   DocumentUploadResponse, 
@@ -14,141 +17,125 @@ export const documentsRouter = Router();
 // Configure multer for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
-      cb(null, true);
-    } else {
-      cb(new Error('Only PDF files are allowed'));
-    }
+    if (file.mimetype === 'application/pdf') cb(null, true);
+    else cb(new Error('Only PDF files are allowed'));
   }
 });
 
-// Mock document storage
-const mockDocuments: Document[] = [];
-
-// Get all documents
-documentsRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
+// Upload document -> store original, trigger processing, persist record
+documentsRouter.post('/upload', upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const search = req.query.search as string;
-
-    let filteredDocs = mockDocuments;
-    
-    if (search) {
-      filteredDocs = mockDocuments.filter(doc => 
-        doc.filename.toLowerCase().includes(search.toLowerCase()) ||
-        doc.originalName.toLowerCase().includes(search.toLowerCase())
-      );
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded', timestamp: new Date() } as ApiResponse);
     }
 
-    const total = filteredDocs.length;
-    const pages = Math.ceil(total / limit);
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    
-    const paginatedDocs = filteredDocs.slice(startIndex, endIndex);
+    const file = req.file;
+    const id = randomUUID();
+    const now = new Date();
+    const db = getDb();
+    const storage = getStorage();
+    const config = getConfig<{ pdfProcessorUrl: string }>();
 
-    const response: PaginatedResponse<Document> = {
-      success: true,
-      data: paginatedDocs,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages
-      },
-      timestamp: new Date()
+    // Save original PDF to private bucket
+    const originalKey = `documents/${id}/original/${file.originalname}`;
+    const originalUri = await storage.uploadPrivate({ key: originalKey, contentType: file.mimetype, body: file.buffer });
+
+    // Create initial DB record
+    const docRecord: Document = {
+      id,
+      filename: `${id}.pdf`,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+      uploadedBy: 'admin',
+      uploadedAt: now,
+      status: 'processing',
+      storage: { originalPdf: originalUri },
+      stats: {}
     };
+    await db.collection('documents').insertOne(docRecord as any);
 
-    res.json(response);
+    // Call PDF processor to get ZIP (analysis json + images)
+    const fd = new FormData();
+    fd.append('file', file.buffer, { filename: file.originalname, contentType: file.mimetype });
+    const zipResp = await axios.post(`${config.pdfProcessorUrl}/extract/zip`, fd, { headers: fd.getHeaders(), responseType: 'arraybuffer', timeout: 120000 });
+
+    // Upload ZIP bundle
+    const zipKey = `documents/${id}/processed/${id}_content.zip`;
+    const zipUri = await storage.uploadPrivate({ key: zipKey, contentType: 'application/zip', body: Buffer.from(zipResp.data) });
+
+    // Also call JSON endpoint for structured metadata/content
+    const fd2 = new FormData();
+    fd2.append('file', file.buffer, { filename: file.originalname, contentType: file.mimetype });
+    const jsonResp = await axios.post(`${config.pdfProcessorUrl}/extract`, fd2, { headers: fd2.getHeaders(), timeout: 120000 });
+    const result: PDFProcessingResult = jsonResp.data;
+
+    // Save analysis JSON to storage
+    const analysisKey = `documents/${id}/processed/${id}_analysis.json`;
+    const analysisUri = await storage.uploadPrivate({ key: analysisKey, contentType: 'application/json', body: Buffer.from(JSON.stringify(result)) });
+
+    // Update DB with results
+    const update: Partial<Document> = {
+      status: 'completed',
+      processedAt: new Date(),
+      metadata: result.metadata,
+      extractedText: result.content?.full_text,
+      storage: { ...(docRecord.storage || {}), zipBundle: zipUri, analysisJson: analysisUri, imagesPrefix: `documents/${id}/images/` },
+      stats: {
+        pageCount: result.metadata.page_count,
+        totalChars: result.content?.total_chars,
+        imagesCount: result.content?.images_count
+      }
+    } as any;
+
+    await db.collection('documents').updateOne({ id }, { $set: update });
+
+    res.json({ success: true, status: 'processing', document: { ...docRecord, ...update } } as DocumentUploadResponse);
+  } catch (error) {
+    try {
+      const db = getDb();
+      const id = (req as any)._docId; // best-effort
+      if (id) await db.collection('documents').updateOne({ id }, { $set: { status: 'failed', error: String(error), processedAt: new Date() } });
+    } catch {}
+    next(error);
+  }
+});
+
+// Poll document status
+documentsRouter.get('/:id/status', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const db = getDb();
+    const doc = await db.collection('documents').findOne({ id: req.params.id }, { projection: { _id: 0 } });
+    if (!doc) {
+      return res.status(404).json({ success: false, message: 'Document not found', timestamp: new Date() } as ApiResponse);
+    }
+    res.json({ success: true, data: doc as unknown as Document, timestamp: new Date() } as ApiResponse<Document>);
   } catch (error) {
     next(error);
   }
 });
 
-// Upload document
-documentsRouter.post('/upload', upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
+// List documents (simple pagination)
+documentsRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'No file uploaded',
-        timestamp: new Date()
-      } as ApiResponse);
-    }
+    const page = Math.max(1, parseInt((req.query.page as string) || '1'));
+    const limit = Math.min(100, Math.max(1, parseInt((req.query.limit as string) || '10')));
+    const skip = (page - 1) * limit;
 
-    const file = req.file;
-    const documentId = `doc_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-    
-    // Create document record
-    const document: Document = {
-      id: documentId,
-      filename: `${documentId}.pdf`,
-      originalName: file.originalname,
-      mimeType: file.mimetype,
-      size: file.size,
-      uploadedBy: '1', // Mock user ID
-      uploadedAt: new Date(),
-      status: 'uploaded'
-    };
+    const db = getDb();
+    const [items, total] = await Promise.all([
+      db.collection('documents').find({}, { projection: { _id: 0 } }).sort({ uploadedAt: -1 }).skip(skip).limit(limit).toArray(),
+      db.collection('documents').countDocuments()
+    ]);
 
-    // Process PDF with Python service
-    try {
-      const formData = new FormData();
-      const blob = new Blob([file.buffer], { type: 'application/pdf' });
-      formData.append('file', blob, file.originalname);
-
-      // Note: This would normally use the PDF processor service
-      // For now, we'll simulate the processing
-      const pdfResult: PDFProcessingResult = {
-        success: true,
-        metadata: {
-          title: 'Sample Document',
-          author: '',
-          subject: '',
-          creator: '',
-          producer: '',
-          creation_date: '',
-          modification_date: '',
-          page_count: 1
-        },
-        content: {
-          full_text: 'Sample extracted text from PDF',
-          pages: [{
-            page_number: 1,
-            text: 'Sample extracted text from PDF',
-            char_count: 32
-          }],
-          total_chars: 32,
-          images_count: 0
-        },
-        images: []
-      };
-
-      document.status = 'processed';
-      document.processedAt = new Date();
-      document.metadata = pdfResult.metadata;
-      document.content = pdfResult.content?.full_text;
-      
-    } catch (processingError) {
-      console.error('PDF processing failed:', processingError);
-      document.status = 'failed';
-      document.error = 'PDF processing failed';
-    }
-
-    mockDocuments.push(document);
-
-    const response: DocumentUploadResponse = {
+    res.json({
       success: true,
-      document,
-      message: 'Document uploaded successfully'
-    };
-
-    res.json(response);
+      data: items as any,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      timestamp: new Date()
+    } as PaginatedResponse<Document>);
   } catch (error) {
     next(error);
   }
@@ -157,21 +144,12 @@ documentsRouter.post('/upload', upload.single('file'), async (req: Request, res:
 // Get document by ID
 documentsRouter.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const document = mockDocuments.find(doc => doc.id === req.params.id);
-    
-    if (!document) {
-      return res.status(404).json({
-        success: false,
-        message: 'Document not found',
-        timestamp: new Date()
-      } as ApiResponse);
+    const db = getDb();
+    const doc = await db.collection('documents').findOne({ id: req.params.id }, { projection: { _id: 0 } });
+    if (!doc) {
+      return res.status(404).json({ success: false, message: 'Document not found', timestamp: new Date() } as ApiResponse);
     }
-
-    res.json({
-      success: true,
-      data: document,
-      timestamp: new Date()
-    } as ApiResponse<Document>);
+    res.json({ success: true, data: doc as unknown as Document, timestamp: new Date() } as ApiResponse<Document>);
   } catch (error) {
     next(error);
   }
@@ -180,23 +158,9 @@ documentsRouter.get('/:id', async (req: Request, res: Response, next: NextFuncti
 // Delete document
 documentsRouter.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const index = mockDocuments.findIndex(doc => doc.id === req.params.id);
-    
-    if (index === -1) {
-      return res.status(404).json({
-        success: false,
-        message: 'Document not found',
-        timestamp: new Date()
-      } as ApiResponse);
-    }
-
-    mockDocuments.splice(index, 1);
-
-    res.json({
-      success: true,
-      message: 'Document deleted successfully',
-      timestamp: new Date()
-    } as ApiResponse);
+    const db = getDb();
+    await db.collection('documents').deleteOne({ id: req.params.id });
+    res.json({ success: true, message: 'Document deleted', timestamp: new Date() } as ApiResponse);
   } catch (error) {
     next(error);
   }
