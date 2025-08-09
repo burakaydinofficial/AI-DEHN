@@ -1,0 +1,153 @@
+/* Admin Layout Specific Styles */
+.admin-container {
+  background-color: #f9fafb; /* bg-gray-50 */
+  min-height: calc(100vh - 120px); /* Account for main header */
+}
+
+/* Admin Card Styles */
+.admin-card {
+  background-color: white;
+  border: 1px solid #e5e7eb; /* border-gray-200 */
+  border-radius: 0.5rem; /* rounded-lg */
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* shadow-sm */
+  padding: 1.5rem; /* p-6 */
+}
+
+/* Status Badge Styles */
+.status-badge {
+  padding: 0.25rem 0.75rem; /* px-3 py-1 */
+  border-radius: 9999px; /* rounded-full */
+  font-size: 0.75rem; /* text-xs */
+  font-weight: 500; /* font-medium */
+  text-transform: capitalize;
+}
+
+/* Priority Badge Styles */
+.priority-badge {
+  padding: 0.25rem 0.5rem; /* px-2 py-1 */
+  border-radius: 0.25rem; /* rounded */
+  font-size: 0.75rem; /* text-xs */
+  font-weight: 500; /* font-medium */
+  text-transform: capitalize;
+}
+
+/* Stats Card Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stats-card {
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+/* Content Grid for Two Column Layout */
+.content-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .content-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Upload Drop Zone */
+.upload-dropzone {
+  border: 2px dashed #d1d5db; /* border-gray-300 */
+  border-radius: 0.5rem;
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.upload-dropzone:hover,
+.upload-dropzone.active {
+  border-color: #2563eb; /* border-blue-600 */
+  background-color: #eff6ff; /* bg-blue-50 */
+}
+
+/* Progress Bar */
+.progress-bar {
+  width: 100%;
+  height: 0.5rem;
+  background-color: #e5e7eb; /* bg-gray-200 */
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: #2563eb; /* bg-blue-600 */
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+/* List Items */
+.list-item {
+  background-color: #f9fafb; /* bg-gray-50 */
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.list-item:hover {
+  background-color: #f3f4f6; /* hover:bg-gray-100 */
+}
+
+/* Feedback Items */
+.feedback-item {
+  border-left: 4px solid #ef4444; /* border-l-4 border-red-500 */
+  background-color: #fef2f2; /* bg-red-50 */
+  border-radius: 0.25rem;
+  padding: 0.75rem;
+}
+
+.feedback-item.high {
+  border-left-color: #f97316; /* border-orange-500 */
+  background-color: #fff7ed; /* bg-orange-50 */
+}
+
+.feedback-item.medium {
+  border-left-color: #eab308; /* border-yellow-500 */
+  background-color: #fefce8; /* bg-yellow-50 */
+}
+
+.feedback-item.low {
+  border-left-color: #3b82f6; /* border-blue-500 */
+  background-color: #eff6ff; /* bg-blue-50 */
+}
+
+/* Loading State */
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 16rem; /* h-64 */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .admin-card {
+    padding: 1rem;
+  }
+  
+  .content-grid {
+    gap: 1rem;
+  }
+}

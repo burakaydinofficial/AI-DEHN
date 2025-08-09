@@ -6,6 +6,7 @@ import { DecompositionPage } from './DecompositionPage';
 import { EnrichmentPage } from './EnrichmentPage';
 import { PublishingPage } from './PublishingPage';
 import { FeedbackPage } from './FeedbackPage';
+import '../../admin.css';
 
 const ADMIN_TABS = {
   dashboard: 'dashboard',
@@ -47,8 +48,10 @@ export const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <AdminLayout activeTab={activeTab} onTabChange={handleTabChange}>
-      {renderContent()}
-    </AdminLayout>
+    <div className="admin-container">
+      <AdminLayout activeTab={activeTab} onTabChange={handleTabChange}>
+        {renderContent()}
+      </AdminLayout>
+    </div>
   );
 };
