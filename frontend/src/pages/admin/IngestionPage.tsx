@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_ADMIN_API_BASE || 'http://localhost:3001/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
 interface UploadProgress {
   filename: string;
@@ -90,9 +90,9 @@ export const IngestionPage: React.FC = () => {
 
     try {
       const formData = new FormData();
-      formData.append('pdf', file);
+      formData.append('file', file);
 
-      await axios.post(`${API_BASE}/documents/upload`, formData, {
+      await axios.post(`${API_BASE}/admin/documents/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

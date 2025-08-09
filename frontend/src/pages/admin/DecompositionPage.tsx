@@ -8,7 +8,7 @@ import {
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE = import.meta.env.VITE_ADMIN_API_BASE || 'http://localhost:3001/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
 interface DocumentSection {
   id: string;
@@ -63,12 +63,34 @@ export const DecompositionPage: React.FC = () => {
     fetchDocuments();
   }, []);
 
+  const handleContentReduction = async (documentId: string) => {
+    try {
+      setLoading(true);
+      await axios.post(`${API_BASE}/admin/documents/${documentId}/reduce`, {
+        groupingStrategy: 'mixed',
+        languageDetectionThreshold: 0.7,
+        aiModel: 'gemini-1.5-pro'
+      });
+      
+      // Refresh the document data
+      await fetchDocuments();
+      
+      // In a real implementation, you'd probably want to show a success message
+      console.log('Content reduction completed');
+    } catch (error) {
+      console.error('Content reduction failed:', error);
+      // In a real implementation, you'd want to show an error message
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchDocuments = async () => {
     try {
       setLoading(true);
       const response = await axios.get(`${API_BASE}/admin/documents`);
       const docs = response.data.data || [];
-      setDocuments(docs.filter((d: Document) => d.status !== 'uploaded'));
+      setDocuments(docs.filter((d: Document) => ['processed', 'reduced', 'chunked'].includes(d.status)));
       
       if (docs.length > 0) {
         setSelectedDocument({ ...docs[0], sections: mockSections });
@@ -151,12 +173,21 @@ export const DecompositionPage: React.FC = () => {
         <div className="bg-white border rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">Semantic Decomposition</h3>
-            <button 
-              onClick={() => handleViewDocument(selectedDocument.id)}
-              className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
-            >
-              View Full Document
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => handleContentReduction(selectedDocument.id)}
+                className="px-3 py-1 text-sm bg-green-100 text-green-800 rounded hover:bg-green-200"
+                disabled={loading}
+              >
+                {loading ? 'Processing...' : 'Reduce Content'}
+              </button>
+              <button 
+                onClick={() => handleViewDocument(selectedDocument.id)}
+                className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+              >
+                View Full Document
+              </button>
+            </div>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
