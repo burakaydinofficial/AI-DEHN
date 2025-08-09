@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
 import './App.css'
-import DocumentsList from './pages/DocumentsList'
-import DocumentDetail from './pages/DocumentDetail'
+import { DocumentsList } from './pages/DocumentsList'
+import { DocumentDetail } from './pages/DocumentDetail'
 
 function App() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)

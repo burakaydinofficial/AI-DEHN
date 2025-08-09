@@ -5,7 +5,8 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { MongoClient, Db } from 'mongodb';
 import { createStorageProvider } from './utils';
-import { setDb, setStorage, setConfig } from './utils/context';
+import { setDb, setStorage, setConfig, setAIAgent } from './utils/context';
+import { AIAgent } from './utils/aiAgent';
 
 // Load environment variables
 dotenv.config();
@@ -97,9 +98,21 @@ async function connectToDatabase() {
     await storage.ensureBuckets();
     console.log('✅ Local file storage initialized');
     
+    // Initialize AI agent
+    const aiApiKey = process.env.AI_API_KEY;
+    if (!aiApiKey) {
+      console.warn('⚠️  AI_API_KEY not found in environment variables. AI features will not work.');
+    }
+    const aiAgent = new AIAgent({
+      apiKey: aiApiKey || '',
+      model: process.env.AI_MODEL || 'gemini-1.5-pro'
+    });
+    console.log('✅ AI Agent initialized');
+    
     // Initialize context
     setDb(db);
     setStorage(storage);
+    setAIAgent(aiAgent);
     setConfig({
       jwtSecret: process.env.JWT_SECRET || 'dev-secret',
       aiApiKey: process.env.AI_API_KEY,

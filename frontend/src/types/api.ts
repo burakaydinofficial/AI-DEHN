@@ -1,4 +1,4 @@
-// Consolidated API types and interfaces for backend
+// Consolidated API types and interfaces for frontend
 
 // Error handling
 export class ApiError extends Error {
@@ -153,40 +153,206 @@ export interface PDFProcessingResult {
 export interface StoragePaths {
   originalPdf?: string; // private bucket URI
   originalKey?: string; // private bucket key
-  analysisJson?: string; // private bucket URI
+  analysisJson?: string; // private bucket URI for raw extraction JSON
   analysisKey?: string;  // private bucket key
-  zipBundle?: string;    // private bucket URI
+  zipBundle?: string;    // private bucket URI for ZIP with images
   zipKey?: string;       // private bucket key
-  reducedJson?: string;  // private bucket URI
+  reducedJson?: string;  // private bucket URI for content reduction JSON
   reducedKey?: string;   // private bucket key
-  chunksJson?: string;   // private bucket URI
+  chunksJson?: string;   // private bucket URI for markdown chunks JSON
   chunksKey?: string;    // private bucket key
   imagesPrefix?: string; // private bucket prefix for images/
+  translationsPrefix?: string; // private bucket prefix for translations/
+}
+
+// Content grouping and reduction types
+export interface TextGroup {
+  id: string;
+  type: 'title' | 'paragraph' | 'list' | 'table' | 'other';
+  originalTexts: LanguageText[];
+  bbox?: [number, number, number, number]; // Overall bounding box
+  pageNumber: number;
+  order: number; // Order within page
+}
+
+export interface LanguageText {
+  language: string; // ISO language code (e.g., 'en', 'tr', 'de')
+  text: string;
+  bbox: [number, number, number, number];
+  confidence: number; // Language detection confidence
+  isOriginal: boolean; // true for extracted, false for generated
+}
+
+export interface ContentReductionResult {
+  groups: TextGroup[];
+  languagesDetected: string[];
+  totalGroups: number;
+  processedAt: Date;
+  metadata: {
+    groupingMethod: string;
+    aiModel: string;
+    processingTime: number;
+  };
+}
+
+// Markdown chunks for content
+export interface MarkdownChunk {
+  id: string;
+  content: string; // Markdown content
+  sourceGroups: string[]; // IDs of text groups this chunk represents
+  language: string;
+  pageNumbers: number[];
+  metadata: {
+    chunkType: 'page' | 'section' | 'merged';
+    layoutReference: string; // Language used for layout reference
+    mergedPages?: number[]; // If chunk spans multiple pages
+    childChunks?: string[]; // Child chunk IDs for complex layouts
+  };
+}
+
+export interface ChunksResult {
+  chunks: MarkdownChunk[];
+  totalChunks: number;
+  languages: string[];
+  processedAt: Date;
+  metadata: {
+    chunkingStrategy: string;
+    aiModel: string;
+    processingTime: number;
+  };
+}
+
+// Translation generation types
+export interface TranslationRequest {
+  sourceLanguage: string;
+  targetLanguage: string;
+  layoutReferenceLanguage?: string; // Language to use for layout reference
+  textReferenceLanguage?: string;   // Language to use for text reference
+  includeContext: boolean; // Include other language versions as context
+}
+
+export interface TranslationResult {
+  translatedGroups: TextGroup[];
+  targetLanguage: string;
+  sourceLanguage: string;
+  layoutReference: string;
+  textReference: string;
+  generatedAt: Date;
+  metadata: {
+    aiModel: string;
+    processingTime: number;
+    contextLanguages: string[];
+    qualityScore?: number;
+  };
 }
 
 export interface ExtractionStats {
   pageCount?: number;
   totalChars?: number;
   imagesCount?: number;
+  languagesDetected?: number;
+  textGroupsCount?: number;
+  chunksGenerated?: number;
 }
 
 export interface TranslationArtifact {
+  id: string;
   name: string;
   contentType: string;
   size: number;
   uri: string;
   uploadedAt: Date;
-  language?: string;
-  sourceLayoutLang?: string;
-  sourceTextLang?: string;
+  language: string;
+  sourceLayoutLang: string;
+  sourceTextLang: string;
+  version: 'original' | 'generated';
+  metadata?: any;
 }
 
 export interface PublishedVariant {
+  id: string;
   language: string;
   version: 'original' | 'generated' | string;
+  artifactId: string; // References TranslationArtifact.id
   url: string; // public URL
   publishedAt: Date;
-  artifactKey: string;
+  isActive: boolean;
+  previewData?: any; // Layout data for preview
+}
+
+// Document workflow API types
+export interface ContentReductionRequest {
+  documentId: string;
+  aiModel?: string;
+  groupingStrategy?: 'layout-based' | 'semantic' | 'mixed';
+  languageDetectionThreshold?: number;
+}
+
+export interface ChunksRequest {
+  documentId: string;
+  chunkSize?: number; // words per chunk
+  preserveLayout?: boolean;
+  includeImages?: boolean;
+  markdownOptions?: MarkdownOptions;
+}
+
+export interface MarkdownOptions {
+  includeHeaders?: boolean;
+  includeFooters?: boolean;
+  preserveFormatting?: boolean;
+  imageHandling?: 'embed' | 'link' | 'caption';
+}
+
+export interface ChunkMetadata {
+  totalChunks: number;
+  totalWords: number;
+  avgWordsPerChunk: number;
+  languages: string[];
+  hasImages: boolean;
+}
+
+export interface TranslationGenerationRequest {
+  documentId: string;
+  targetLanguages: string[];
+  sourceLanguage?: string;
+  layoutReferenceLanguage?: string;
+  textReferenceLanguage?: string;
+  includeImages?: boolean;
+  preserveLayout?: boolean;
+  customPrompt?: string;
+  useContext?: boolean;
+}
+
+export interface TranslatedImage {
+  originalPath: string;
+  translatedPath: string;
+  altText?: string;
+  caption?: string;
+}
+
+export interface PublishRequest {
+  documentId: string;
+  languages?: string[];
+  includeChunks?: boolean;
+  includeTranslations?: boolean;
+  format?: 'web' | 'mobile' | 'both';
+  preview?: boolean;
+}
+
+export interface PublishResult {
+  publishedAt: Date;
+  formats: PublishedFormat[];
+  previewUrl?: string;
+  downloadUrl?: string;
+  expiresAt?: Date;
+}
+
+export interface PublishedFormat {
+  format: 'web' | 'mobile';
+  languages: string[];
+  url: string;
+  size: number;
+  checksum: string;
 }
 
 // Document Management
@@ -201,13 +367,18 @@ export interface Document {
   processedAt?: Date;
   metadata?: PDFMetadata;
   content?: string;
-  status: 'uploaded' | 'processing' | 'processed' | 'failed';
+  status: 'uploaded' | 'processing' | 'processed' | 'reduced' | 'chunked' | 'translated' | 'published' | 'failed';
   error?: string;
   // Extended processing data
   storage?: StoragePaths;
   stats?: ExtractionStats;
   translations?: TranslationArtifact[];
   published?: PublishedVariant[];
+  // New workflow support
+  contentReduction?: ContentReductionResult;
+  chunks?: ChunksResult;
+  availableLanguages?: string[]; // Languages available for this document
+  processingStage?: 'upload' | 'extraction' | 'reduction' | 'chunking' | 'translation' | 'publishing';
 }
 
 export interface DocumentUploadRequest {

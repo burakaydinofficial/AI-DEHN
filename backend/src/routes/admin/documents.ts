@@ -5,13 +5,20 @@ import FormData from 'form-data';
 import { randomUUID } from 'crypto';
 import AdmZip from 'adm-zip';
 import mime from 'mime-types';
-import { getDb, getStorage, getConfig } from '../../utils/context';
+import path from 'path';
+import fs from 'fs/promises';
+import { v4 as uuidv4 } from 'uuid';
+import { getDb, getStorage, getConfig, getAppContext } from '../../utils/context';
 import { 
   Document, 
   DocumentUploadResponse, 
   ApiResponse, 
   PaginatedResponse,
-  PDFProcessingResult 
+  PDFProcessingResult,
+  ContentReductionRequest,
+  ContentReductionResult,
+  TextGroup,
+  LanguageText
 } from '../../types/api';
 
 export const documentsRouter = Router();
@@ -310,6 +317,99 @@ documentsRouter.post('/:id/generate-translation', async (req: Request, res: Resp
   } catch (error) { return next(error); }
 });
 
+// Content Reduction - AI-powered text grouping and language detection
+documentsRouter.post('/:id/reduce', async (req: Request<{ id: string }, ApiResponse<ContentReductionResult>, ContentReductionRequest>, res: Response<ApiResponse<ContentReductionResult>>, next: NextFunction) => {
+  try {
+    const { id: documentId } = req.params;
+    const {
+      aiModel = 'gemini-1.5-pro',
+      groupingStrategy = 'mixed',
+      languageDetectionThreshold = 0.7
+    } = req.body;
+
+    const context = getAppContext();
+    const { storage, database } = context;
+
+    // Get document from database
+    const document = await database.collection('documents').findOne({ id: documentId });
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        error: 'Document not found',
+        timestamp: new Date()
+      });
+    }
+
+    // Check if document has been processed (PDF → ZIP extraction complete)
+    if (!document.storage?.analysisJson) {
+      return res.status(400).json({
+        success: false,
+        error: 'Document must be processed first. PDF analysis data not found.',
+        timestamp: new Date()
+      });
+    }
+
+    // Load the analysis JSON containing extracted PDF content
+    const analysisPath = path.join(process.cwd(), 'storage', 'private', document.storage.analysisJson);
+    const analysisData = JSON.parse(await fs.readFile(analysisPath, 'utf8'));
+
+    // Perform content reduction using AI
+    const aiAgent = context.aiAgent;
+    const reductionResult = await performContentReduction(
+      analysisData,
+      aiAgent,
+      groupingStrategy,
+      languageDetectionThreshold,
+      aiModel
+    );
+
+    // Save content reduction results to storage
+    const reducedFilename = `${documentId}-content-reduction.json`;
+    const reducedPath = await storage.uploadPrivate({
+      key: `documents/${documentId}/reduced/${reducedFilename}`,
+      contentType: 'application/json',
+      body: Buffer.from(JSON.stringify(reductionResult, null, 2))
+    });
+
+    // Update document in database
+    const updateResult = await database.collection('documents').updateOne(
+      { id: documentId },
+      {
+        $set: {
+          status: 'reduced',
+          processingStage: 'reduction',
+          contentReduction: reductionResult,
+          'storage.reducedJson': reducedFilename,
+          'storage.reducedKey': reducedPath,
+          'stats.languagesDetected': reductionResult.languagesDetected.length,
+          'stats.textGroupsCount': reductionResult.totalGroups,
+          availableLanguages: reductionResult.languagesDetected,
+          processedAt: new Date()
+        }
+      }
+    );
+
+    if (updateResult.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Failed to update document',
+        timestamp: new Date()
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: reductionResult,
+      message: 'Content reduction completed successfully',
+      timestamp: new Date()
+    });
+
+  } catch (error) {
+    next(error);
+    return;
+  }
+});
+
 // Publish selected variant to public bucket
 documentsRouter.post('/:id/publish', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -347,3 +447,243 @@ documentsRouter.post('/:id/publish', async (req: Request, res: Response, next: N
     return res.json({ success: true, message: 'Published', timestamp: new Date(), data: { url } } as ApiResponse);
   } catch (error) { return next(error); }
 });
+
+// Helper function to perform AI-powered content reduction
+async function performContentReduction(
+  analysisData: any,
+  aiAgent: any,
+  groupingStrategy: 'layout-based' | 'semantic' | 'mixed',
+  languageThreshold: number,
+  model: string
+): Promise<ContentReductionResult> {
+  const startTime = Date.now();
+
+  // Extract text blocks from PDF analysis data
+  const textBlocks = extractTextBlocks(analysisData);
+  
+  // Group text blocks using AI and layout analysis
+  const groups = await groupTextBlocks(textBlocks, aiAgent, groupingStrategy, model);
+  
+  // Detect languages in each group
+  const groupsWithLanguages = await detectLanguagesInGroups(groups, aiAgent, languageThreshold, model, textBlocks);
+  
+  // Get unique languages detected
+  const languagesDetected = [...new Set(
+    groupsWithLanguages.flatMap(group => 
+      group.originalTexts.map(text => text.language)
+    )
+  )];
+
+  const processingTime = Date.now() - startTime;
+
+  return {
+    groups: groupsWithLanguages,
+    languagesDetected,
+    totalGroups: groupsWithLanguages.length,
+    processedAt: new Date(),
+    metadata: {
+      groupingMethod: groupingStrategy,
+      aiModel: model,
+      processingTime
+    }
+  };
+}
+
+// Extract text blocks from PDF analysis data
+function extractTextBlocks(analysisData: any): any[] {
+  const blocks = [];
+  
+  if (analysisData.content?.pages) {
+    for (const page of analysisData.content.pages) {
+      if (page.text_blocks) {
+        for (const block of page.text_blocks) {
+          if (block.block_type === 'text' && block.lines?.length > 0) {
+            // Extract text from spans within lines
+            const blockText = block.lines
+              .flatMap((line: any) => line.spans || [])
+              .map((span: any) => span.text || '')
+              .join(' ')
+              .trim();
+            
+            if (blockText.length > 10) { // Filter out very short blocks
+              blocks.push({
+                text: blockText,
+                bbox: block.bbox,
+                pageNumber: page.page_number,
+                lines: block.lines
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  return blocks;
+}
+
+// Group text blocks using AI analysis
+async function groupTextBlocks(
+  textBlocks: any[],
+  aiAgent: any,
+  strategy: string,
+  model: string
+): Promise<TextGroup[]> {
+  const prompt = `
+You are analyzing text blocks extracted from a multilingual PDF document. Your task is to group related text blocks that represent the same content across different languages.
+
+Strategy: ${strategy}
+
+Text blocks with their positions and page numbers:
+${textBlocks.slice(0, 20).map((block, idx) => 
+  `Block ${idx}: Page ${block.pageNumber}, BBox: ${block.bbox}, Text: "${block.text.substring(0, 100)}..."`
+).join('\n')}
+
+Group these text blocks by:
+1. Content similarity (same meaning in different languages)
+2. Layout position (blocks in similar positions likely contain similar content)
+3. Text type (title, paragraph, list item, table cell, etc.)
+
+Return a JSON array of groups where each group contains:
+- id: unique identifier (use uuid format)
+- type: 'title' | 'paragraph' | 'list' | 'table' | 'other'
+- blockIndices: array of block indices that belong to this group
+- overallBbox: calculated overall bounding box [x0, y0, x1, y1]
+- pageNumber: page number where this group primarily appears
+- order: order within the page (0-based)
+
+Focus on creating meaningful groups that represent the same content across languages.
+Return only the JSON array, no other text.
+`;
+
+  try {
+    const response = await aiAgent.generateContent(prompt, {
+      model,
+      temperature: 0.3,
+      maxOutputTokens: 4000
+    });
+
+    const groupsData = JSON.parse(response.text);
+    
+    return groupsData.map((group: any, idx: number) => ({
+      id: group.id || uuidv4(),
+      type: group.type || 'other',
+      originalTexts: [], // Will be populated with language detection
+      bbox: group.overallBbox || calculateOverallBbox(group.blockIndices?.map((i: number) => textBlocks[i]) || []),
+      pageNumber: group.pageNumber || 1,
+      order: group.order ?? idx,
+      _blockIndices: group.blockIndices || [] // Temporary for language processing
+    }));
+  } catch (error) {
+    console.error('AI grouping failed, falling back to simple grouping:', error);
+    
+    // Fallback: simple position-based grouping
+    return textBlocks.map((block, idx) => ({
+      id: uuidv4(),
+      type: 'paragraph' as const,
+      originalTexts: [],
+      bbox: block.bbox,
+      pageNumber: block.pageNumber,
+      order: idx,
+      _blockIndices: [idx]
+    }));
+  }
+}
+
+// Detect languages in grouped text blocks
+async function detectLanguagesInGroups(
+  groups: any[],
+  aiAgent: any,
+  threshold: number,
+  model: string,
+  allBlocks: any[]
+): Promise<TextGroup[]> {
+  const processedGroups: TextGroup[] = [];
+
+  for (const group of groups) {
+    const blockIndices = group._blockIndices || [];
+    const groupTexts: LanguageText[] = [];
+
+    for (const blockIdx of blockIndices) {
+      const block = allBlocks[blockIdx];
+      if (!block) continue;
+
+      // Detect language for this text block
+      const language = await detectLanguage(block.text, aiAgent, model);
+      
+      if (language) {
+        groupTexts.push({
+          language,
+          text: block.text,
+          bbox: block.bbox,
+          confidence: 0.8, // Default confidence, could be improved with actual detection
+          isOriginal: true
+        });
+      }
+    }
+
+    if (groupTexts.length > 0) {
+      processedGroups.push({
+        id: group.id,
+        type: group.type,
+        originalTexts: groupTexts,
+        bbox: group.bbox,
+        pageNumber: group.pageNumber,
+        order: group.order
+      });
+    }
+  }
+
+  return processedGroups;
+}
+
+// Detect language of text using AI
+async function detectLanguage(text: string, aiAgent: any, model: string): Promise<string | null> {
+  if (!text || text.trim().length < 3) return null;
+
+  const prompt = `
+Detect the language of this text and return only the ISO 639-1 language code (2 letters, lowercase):
+
+Text: "${text.substring(0, 200)}"
+
+Return only the language code (e.g., "en", "tr", "de", "fr", "es", etc.). If uncertain, return "unknown".
+`;
+
+  try {
+    const response = await aiAgent.generateContent(prompt, {
+      model,
+      temperature: 0.1,
+      maxOutputTokens: 10
+    });
+
+    const language = response.text.trim().toLowerCase();
+    
+    // Validate it's a reasonable language code
+    if (/^[a-z]{2}$/.test(language) && language !== 'un') {
+      return language;
+    }
+    
+    return 'unknown';
+  } catch (error) {
+    console.error('Language detection failed for text:', text.substring(0, 50), error);
+    return 'unknown';
+  }
+}
+
+// Calculate overall bounding box from multiple blocks
+function calculateOverallBbox(blocks: any[]): [number, number, number, number] {
+  if (blocks.length === 0) return [0, 0, 0, 0];
+  
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  
+  for (const block of blocks) {
+    if (block.bbox && Array.isArray(block.bbox) && block.bbox.length === 4) {
+      minX = Math.min(minX, block.bbox[0]);
+      minY = Math.min(minY, block.bbox[1]);
+      maxX = Math.max(maxX, block.bbox[2]);
+      maxY = Math.max(maxY, block.bbox[3]);
+    }
+  }
+  
+  return [minX, minY, maxX, maxY];
+}
