@@ -25,8 +25,7 @@ resource "google_project_service" "required_apis" {
     "containerregistry.googleapis.com",
     "run.googleapis.com",
     "cloudbuild.googleapis.com",
-    "secretmanager.googleapis.com",
-    "firestore.googleapis.com"
+    "secretmanager.googleapis.com"
   ])
 
   project = var.project_id
@@ -49,16 +48,6 @@ resource "google_compute_subnetwork" "subnet" {
   ip_cidr_range = "10.0.0.0/24"
   region        = var.region
   network       = google_compute_network.vpc_network.id
-}
-
-# Firestore database
-resource "google_firestore_database" "main" {
-  project     = var.project_id
-  name        = "(default)"
-  location_id = var.region
-  type        = "FIRESTORE_NATIVE"
-
-  depends_on = [google_project_service.required_apis]
 }
 
 # Cloud Storage bucket for document storage
@@ -112,6 +101,22 @@ resource "google_secret_manager_secret" "ai_api_key" {
   depends_on = [google_project_service.required_apis]
 }
 
+# MongoDB connection string secret
+resource "google_secret_manager_secret" "mongodb_connection" {
+  secret_id = "mongodb-connection-${var.environment}"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.required_apis]
+}
+
+resource "google_secret_manager_secret_version" "mongodb_connection_version" {
+  secret = google_secret_manager_secret.mongodb_connection.name
+  secret_data = var.mongodb_connection_string
+}
+
 # Cloud Run services
 
 # Service Account for Cloud Run services
@@ -130,6 +135,12 @@ resource "google_secret_manager_secret_iam_member" "ai_api_key_access" {
 
 resource "google_secret_manager_secret_iam_member" "jwt_secret_access" {
   secret_id = google_secret_manager_secret.jwt_secret.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "mongodb_connection_access" {
+  secret_id = google_secret_manager_secret.mongodb_connection.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
@@ -230,6 +241,21 @@ resource "google_cloud_run_service" "admin_backend" {
           }
         }
 
+        env {
+          name = "MONGODB_CONNECTION_STRING"
+          value_from {
+            secret_key_ref {
+              name = google_secret_manager_secret.mongodb_connection.secret_id
+              key  = "latest"
+            }
+          }
+        }
+
+        env {
+          name  = "DATABASE_NAME"
+          value = "dehn"
+        }
+
         resources {
           limits = {
             cpu    = "1000m"
@@ -255,7 +281,8 @@ resource "google_cloud_run_service" "admin_backend" {
     google_project_service.required_apis,
     google_service_account.cloud_run_sa,
     google_secret_manager_secret_iam_member.ai_api_key_access,
-    google_secret_manager_secret_iam_member.jwt_secret_access
+    google_secret_manager_secret_iam_member.jwt_secret_access,
+    google_secret_manager_secret_iam_member.mongodb_connection_access
   ]
 }
 
@@ -300,6 +327,21 @@ resource "google_cloud_run_service" "user_backend" {
           }
         }
 
+        env {
+          name = "MONGODB_CONNECTION_STRING"
+          value_from {
+            secret_key_ref {
+              name = google_secret_manager_secret.mongodb_connection.secret_id
+              key  = "latest"
+            }
+          }
+        }
+
+        env {
+          name  = "DATABASE_NAME"
+          value = "dehn"
+        }
+
         resources {
           limits = {
             cpu    = "1000m"
@@ -325,7 +367,8 @@ resource "google_cloud_run_service" "user_backend" {
     google_project_service.required_apis,
     google_service_account.cloud_run_sa,
     google_secret_manager_secret_iam_member.ai_api_key_access,
-    google_secret_manager_secret_iam_member.jwt_secret_access
+    google_secret_manager_secret_iam_member.jwt_secret_access,
+    google_secret_manager_secret_iam_member.mongodb_connection_access
   ]
 }
 

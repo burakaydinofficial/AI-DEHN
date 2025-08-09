@@ -28,6 +28,12 @@ variable "environment" {
   }
 }
 
+variable "mongodb_connection_string" {
+  description = "MongoDB Atlas connection string"
+  type        = string
+  sensitive   = true
+}
+
 variable "domain_name" {
   description = "Custom domain name for the application (optional)"
   type        = string

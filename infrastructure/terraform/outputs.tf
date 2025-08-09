@@ -40,11 +40,6 @@ output "environment" {
   value       = var.environment
 }
 
-output "firestore_database" {
-  description = "Firestore database name"
-  value       = google_firestore_database.main.name
-}
-
 output "vpc_network_name" {
   description = "VPC network name"
   value       = google_compute_network.vpc_network.name

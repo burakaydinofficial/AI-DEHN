@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import { MongoClient, Db } from 'mongodb';
+import { Storage } from '@google-cloud/storage';
 
 // Load environment variables
 dotenv.config();
@@ -12,13 +14,41 @@ const app = express();
 // Configuration
 const config = {
   port: parseInt(process.env.PORT || '3090'),
-  dbUrl: process.env.DATABASE_URL || 'sqlite:./user.db',
+  mongoUrl: process.env.MONGODB_CONNECTION_STRING || 'mongodb://localhost:27017',
+  databaseName: process.env.DATABASE_NAME || 'dehn',
   jwtSecret: process.env.JWT_SECRET || 'user-jwt-secret-change-in-production',
-  aiApiKey: process.env.AI_API_KEY || '',
+  aiApiKey: process.env.GEMINI_API_KEY || process.env.AI_API_KEY || '',
   pdfProcessorUrl: process.env.PDF_PROCESSOR_URL || 'http://localhost:3095',
   corsOrigins: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:8090'],
   environment: (process.env.NODE_ENV as any) || 'development'
 };
+
+// Global database connection
+let db: Db;
+let storage: Storage;
+
+// Initialize database connection
+async function initializeDatabase() {
+  try {
+    const client = new MongoClient(config.mongoUrl);
+    await client.connect();
+    db = client.db(config.databaseName);
+    console.log(`✅ Connected to MongoDB: ${config.databaseName}`);
+  } catch (error) {
+    console.error('❌ Failed to connect to MongoDB:', error);
+    if (config.environment === 'development') {
+      console.warn('⚠️  Continuing in development mode without database');
+    } else {
+      process.exit(1);
+    }
+  }
+}
+
+// Make database available globally
+export { db, storage, config };
+
+// Initialize connections
+initializeDatabase();
 
 // Middleware
 app.use(helmet());

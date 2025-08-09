@@ -8,7 +8,7 @@ The infrastructure includes:
 
 - **Cloud Run Services**: Serverless containers for PDF processor, admin backend, and user backend
 - **Cloud Storage**: Document storage with lifecycle management
-- **Firestore**: NoSQL database for metadata and user data
+- **MongoDB Atlas**: NoSQL database for metadata and user data
 - **Secret Manager**: Secure storage for API keys and secrets
 - **VPC Network**: Private networking for secure communication
 - **IAM**: Proper access controls and service accounts
@@ -283,6 +283,6 @@ terraform {
 - [Terraform Google Provider Documentation](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
 - [Google Cloud Run Documentation](https://cloud.google.com/run/docs)
 - [Google Cloud Storage Documentation](https://cloud.google.com/storage/docs)
-- [Firestore Documentation](https://cloud.google.com/firestore/docs)
+- [MongoDB Atlas Documentation](https://docs.atlas.mongodb.com)
 
 For more help, see the main project [DEVELOPMENT.md](../../DEVELOPMENT.md) file.

@@ -58,7 +58,7 @@ This is a multi-service document processing application built for a hackathon. T
 - Cache AI responses where appropriate
 
 ### Database & Storage
-- Use Firestore for document metadata and user data
+- Use MongoDB Atlas for document metadata and user data
 - Store actual PDF files in Google Cloud Storage
 - Implement proper data validation and sanitization
 - Use transactions for multi-document operations

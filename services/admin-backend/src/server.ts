@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import { MongoClient, Db } from 'mongodb';
+import { Storage } from '@google-cloud/storage';
 import { authRouter } from './routes/auth';
 import { documentsRouter } from './routes/documents';
 import { usersRouter } from './routes/users';
@@ -18,13 +20,99 @@ const app = express();
 // Configuration
 const config = {
   port: parseInt(process.env.PORT || '3091'),
-  dbUrl: process.env.DATABASE_URL || 'sqlite:./admin.db',
+  mongoUrl: process.env.MONGODB_CONNECTION_STRING || 'mongodb://localhost:27017',
+  databaseName: process.env.DATABASE_NAME || 'dehn',
   jwtSecret: process.env.JWT_SECRET || 'admin-jwt-secret-change-in-production',
-  aiApiKey: process.env.AI_API_KEY || '',
+  aiApiKey: process.env.GEMINI_API_KEY || process.env.AI_API_KEY || '',
   pdfProcessorUrl: process.env.PDF_PROCESSOR_URL || 'http://localhost:3095',
   corsOrigins: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:8091'],
-  environment: (process.env.NODE_ENV as any) || 'development'
+  environment: (process.env.NODE_ENV as any) || 'development',
+  // Storage configuration
+  googleCloudProjectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+  googleApplicationCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+  privateBucket: process.env.MINIO_BUCKET_PRIVATE || 'dehn-private',
+  publicBucket: process.env.MINIO_BUCKET_PUBLIC || 'dehn-public',
+  minioEndpoint: process.env.MINIO_ENDPOINT || 'http://localhost:9000'
 };
+
+// Global database connection
+let db: Db;
+let storage: Storage;
+
+// Initialize database connection
+async function initializeDatabase() {
+  try {
+    const client = new MongoClient(config.mongoUrl);
+    await client.connect();
+    db = client.db(config.databaseName);
+    console.log(`✅ Connected to MongoDB: ${config.databaseName}`);
+    
+    // Initialize collections and indexes
+    await initializeCollections();
+  } catch (error) {
+    console.error('❌ Failed to connect to MongoDB:', error);
+    // In development, continue without database
+    if (config.environment === 'development') {
+      console.warn('⚠️  Continuing in development mode without database');
+    } else {
+      process.exit(1);
+    }
+  }
+}
+
+// Initialize storage client
+async function initializeStorage() {
+  try {
+    if (config.googleApplicationCredentials && config.googleCloudProjectId) {
+      storage = new Storage({
+        projectId: config.googleCloudProjectId,
+        keyFilename: config.googleApplicationCredentials
+      });
+      console.log('✅ Google Cloud Storage initialized');
+    } else {
+      console.log('📦 Using MinIO storage for development');
+      // MinIO configuration would go here
+    }
+  } catch (error) {
+    console.error('❌ Failed to initialize storage:', error);
+  }
+}
+
+// Initialize database collections and indexes
+async function initializeCollections() {
+  if (!db) return;
+  
+  try {
+    // Create collections if they don't exist
+    const collections = await db.listCollections().toArray();
+    const collectionNames = collections.map(c => c.name);
+    
+    const requiredCollections = ['users', 'documents', 'sessions'];
+    for (const collectionName of requiredCollections) {
+      if (!collectionNames.includes(collectionName)) {
+        await db.createCollection(collectionName);
+        console.log(`✅ Created collection: ${collectionName}`);
+      }
+    }
+    
+    // Create indexes
+    await db.collection('documents').createIndex({ 'filename': 1 });
+    await db.collection('documents').createIndex({ 'status': 1 });
+    await db.collection('documents').createIndex({ 'uploadedAt': -1 });
+    await db.collection('users').createIndex({ 'email': 1 }, { unique: true });
+    
+    console.log('✅ Database indexes created');
+  } catch (error) {
+    console.error('❌ Failed to initialize collections:', error);
+  }
+}
+
+// Make database and storage available globally
+export { db, storage, config };
+
+// Initialize connections
+initializeDatabase();
+initializeStorage();
 
 // Middleware
 app.use(helmet());

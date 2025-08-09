@@ -330,7 +330,7 @@ terraform output
 The infrastructure includes:
 - **Cloud Run Services**: Serverless, auto-scaling containers
 - **Cloud Storage**: Document storage with lifecycle management
-- **Firestore**: NoSQL database for metadata
+- **MongoDB Atlas**: NoSQL database for metadata
 - **Secret Manager**: Secure API key storage
 - **VPC Network**: Private networking
 - **IAM**: Proper access controls
@@ -352,7 +352,7 @@ npm run dev:local
 1. **Custom Domains**: Configure Cloud DNS and SSL certificates
 2. **Monitoring**: Set up Cloud Monitoring and Logging
 3. **Security**: Review IAM roles and network security
-4. **Backup**: Configure automated backups for Firestore
+4. **Backup**: Configure automated backups for MongoDB Atlas
 5. **CDN**: Set up Cloud CDN for static assets
 
 ## Troubleshooting
@@ -405,7 +405,7 @@ npm run dev:local
    - Implement role-based access control
 
 2. **Add Database Integration**
-   - Connect to Firestore or PostgreSQL
+   - Connect to MongoDB Atlas
    - Implement proper data models
    - Add database migrations
 
