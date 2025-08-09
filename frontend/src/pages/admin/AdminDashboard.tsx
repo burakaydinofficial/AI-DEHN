@@ -7,22 +7,39 @@ import { EnrichmentPage } from './EnrichmentPage';
 import { PublishingPage } from './PublishingPage';
 import { FeedbackPage } from './FeedbackPage';
 
+const ADMIN_TABS = {
+  dashboard: 'dashboard',
+  ingestion: 'ingestion',
+  decomposition: 'decomposition',
+  enrichment: 'enrichment',
+  publishing: 'publishing',
+  feedback: 'feedback'
+} as const;
+
+type AdminTabType = typeof ADMIN_TABS[keyof typeof ADMIN_TABS];
+
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState<AdminTabType>(ADMIN_TABS.dashboard);
+
+  const handleTabChange = (tab: string) => {
+    if (Object.values(ADMIN_TABS).includes(tab as AdminTabType)) {
+      setActiveTab(tab as AdminTabType);
+    }
+  };
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard':
+      case ADMIN_TABS.dashboard:
         return <DashboardPage />;
-      case 'ingestion':
+      case ADMIN_TABS.ingestion:
         return <IngestionPage />;
-      case 'decomposition':
+      case ADMIN_TABS.decomposition:
         return <DecompositionPage />;
-      case 'enrichment':
+      case ADMIN_TABS.enrichment:
         return <EnrichmentPage />;
-      case 'publishing':
+      case ADMIN_TABS.publishing:
         return <PublishingPage />;
-      case 'feedback':
+      case ADMIN_TABS.feedback:
         return <FeedbackPage />;
       default:
         return <DashboardPage />;
@@ -30,7 +47,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <AdminLayout activeTab={activeTab} onTabChange={setActiveTab}>
+    <AdminLayout activeTab={activeTab} onTabChange={handleTabChange}>
       {renderContent()}
     </AdminLayout>
   );
