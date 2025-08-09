@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
 import './App.css'
 import { DocumentsList } from './pages/DocumentsList'
 import { DocumentDetail } from './pages/DocumentDetail'
+import { AdminDashboard } from './pages/admin/AdminDashboard'
 
 function App() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
@@ -23,7 +24,8 @@ function App() {
         <header className="app-header">
           <h1>DEHN Document Platform</h1>
           <nav>
-            <Link to="/">Documents</Link>
+            <Link to="/" className="nav-link">Documents</Link>
+            <Link to="/admin" className="nav-link">Admin Panel</Link>
           </nav>
         </header>
         
@@ -31,6 +33,7 @@ function App() {
           <Routes>
             <Route path="/" element={<DocumentsList />} />
             <Route path="/document/:id" element={<DocumentDetail />} />
+            <Route path="/admin" element={<AdminDashboard />} />
           </Routes>
         </main>
       </div>
