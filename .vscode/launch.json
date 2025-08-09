@@ -24,7 +24,7 @@
       "runtimeArgs": ["-r", "ts-node/register"],
       "env": {
         "NODE_ENV": "development",
-        "PORT": "3003"
+        "PORT": "3002"
       },
       "cwd": "${workspaceFolder}/services/user-backend",
       "console": "integratedTerminal"
@@ -36,7 +36,7 @@
       "program": "${workspaceFolder}/services/pdf-processor/main.py",
       "cwd": "${workspaceFolder}/services/pdf-processor",
       "env": {
-        "PORT": "3001",
+        "PORT": "8080",
         "DEBUG": "true"
       },
       "console": "integratedTerminal"

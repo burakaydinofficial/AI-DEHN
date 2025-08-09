@@ -61,8 +61,7 @@ pip install \
     pytest-cov \
     black \
     flake8 \
-    mypy \
-    pre-commit
+    mypy
 
 # Create development requirements file
 echo "📝 Creating development requirements file..."
@@ -73,7 +72,8 @@ pytest-cov>=4.1.0
 black>=23.7.0
 flake8>=6.0.0
 mypy>=1.5.0
-pre-commit>=3.3.0
+requests-mock>=1.11.0
+EOF
 
 # Testing utilities
 httpx>=0.24.0
@@ -92,7 +92,7 @@ if [ ! -f ".env" ]; then
     else
         cat > .env << EOF
 # PDF Processor Environment Variables
-PORT=3001
+PORT=8080
 HOST=0.0.0.0
 DEBUG=true
 EOF
@@ -100,32 +100,9 @@ EOF
     fi
 fi
 
-# Create pre-commit configuration
-echo "🔧 Setting up code quality tools..."
-cat > .pre-commit-config.yaml << EOF
-repos:
-  - repo: https://github.com/psf/black
-    rev: 23.7.0
-    hooks:
-      - id: black
-        language_version: python3
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 6.0.0
-    hooks:
-      - id: flake8
-        args: [--max-line-length=88, --extend-ignore=E203,W503]
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.5.0
-    hooks:
-      - id: mypy
-        additional_dependencies: [types-requests]
-EOF
-
-# Install pre-commit hooks
-echo "🪝 Installing pre-commit hooks..."
-pre-commit install
+# Install development dependencies
+echo "📦 Installing development dependencies..."
+pip install -r requirements-dev.txt
 
 # Create pytest configuration
 cat > pytest.ini << EOF
@@ -187,11 +164,11 @@ def main():
     """Run the development server."""
     # Set development environment
     os.environ.setdefault('DEBUG', 'true')
-    os.environ.setdefault('PORT', '3001')
+    os.environ.setdefault('PORT', '8080')
     os.environ.setdefault('HOST', '127.0.0.1')
     
     print("🚀 Starting PDF Processor in Development Mode")
-    print(f"📡 Server will be available at: http://127.0.0.1:3001")
+    print(f"📡 Server will be available at: http://127.0.0.1:8080")
     print("🔄 Auto-reload enabled")
     print("🐛 Debug mode enabled")
     print()
@@ -279,5 +256,5 @@ echo "   make format    - Format code"
 echo "   make dev       - Start development server"
 echo "   make clean     - Clean cache files"
 echo ""
-echo "🌐 The development server will run at: http://127.0.0.1:3001"
+echo "🌐 The development server will run at: http://127.0.0.1:8080"
 echo "🔄 Auto-reload is enabled in development mode"

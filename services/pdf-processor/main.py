@@ -7,11 +7,14 @@ A lightweight HTTP service for extracting text and metadata from PDF files using
 import os
 import json
 import logging
+import tempfile
+import zipfile
 from io import BytesIO
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
+from pathlib import Path
 
 import fitz  # PyMuPDF
-from bottle import Bottle, request, response, run, HTTPError
+from bottle import Bottle, request, response, run, HTTPError, static_file
 
 # Configure logging
 logging.basicConfig(
@@ -235,6 +238,56 @@ class PDFProcessor:
                 "success": False,
                 "error": f"Failed to process PDF: {str(e)}"
             }
+    
+    @staticmethod
+    def extract_images_from_pdf(pdf_bytes: bytes) -> Tuple[Dict[str, Any], List[Tuple[str, bytes]]]:
+        """
+        Extract both content and images from PDF bytes.
+        
+        Args:
+            pdf_bytes: PDF file as bytes
+            
+        Returns:
+            Tuple of (content_dict, list_of_image_tuples)
+            where each image tuple is (filename, image_bytes)
+        """
+        try:
+            doc = fitz.open("pdf", pdf_bytes)
+            images = []
+            
+            # First extract normal content
+            content_result = PDFProcessor.extract_pdf_content(pdf_bytes)
+            
+            # Then extract actual image data
+            for page_num in range(doc.page_count):
+                page = doc[page_num]
+                image_list = page.get_images()
+                
+                for img_index, img in enumerate(image_list):
+                    try:
+                        # Get image data
+                        xref = img[0]
+                        pix = fitz.Pixmap(doc, xref)
+                        
+                        # Convert to PNG if needed
+                        if pix.n - pix.alpha < 4:  # GRAY or RGB
+                            img_data = pix.tobytes("png")
+                            img_filename = f"page_{page_num + 1}_image_{img_index + 1}.png"
+                            images.append((img_filename, img_data))
+                        
+                        pix = None  # Clean up
+                    except Exception as e:
+                        logger.warning(f"Could not extract image {img_index} from page {page_num + 1}: {e}")
+            
+            doc.close()
+            return content_result, images
+            
+        except Exception as e:
+            logger.error(f"Error extracting images from PDF: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Failed to extract images: {str(e)}"
+            }, []
 
 @app.route('/health', method='GET')
 def health_check():
@@ -293,6 +346,82 @@ def extract_pdf():
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPError(500, f"Internal server error: {str(e)}")
 
+@app.route('/extract/zip', method='POST')
+def extract_pdf_with_images():
+    """
+    Extract content and images from uploaded PDF file, return as ZIP.
+    
+    Expected: multipart/form-data with 'file' field containing PDF
+    Returns: ZIP file containing JSON analysis and extracted images
+    """
+    try:
+        # Set CORS headers
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        
+        # Get uploaded file
+        upload = request.files.get('file')
+        if not upload:
+            raise HTTPError(400, "No file uploaded. Please provide a PDF file in 'file' field.")
+        
+        # Validate file type
+        if not upload.filename.lower().endswith('.pdf'):
+            raise HTTPError(400, "Invalid file type. Only PDF files are supported.")
+        
+        # Read file content
+        pdf_bytes = upload.file.read()
+        if not pdf_bytes:
+            raise HTTPError(400, "Empty file uploaded.")
+        
+        logger.info(f"Processing PDF with images: {upload.filename} ({len(pdf_bytes)} bytes)")
+        
+        # Extract content and images
+        content_result, images = PDFProcessor.extract_images_from_pdf(pdf_bytes)
+        
+        if not content_result["success"]:
+            raise HTTPError(500, content_result.get("error", "Failed to process PDF"))
+        
+        # Create ZIP file in memory
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Add JSON analysis
+            json_content = json.dumps(content_result, indent=2, ensure_ascii=False)
+            json_filename = f"{Path(upload.filename).stem}_analysis.json"
+            zip_file.writestr(json_filename, json_content.encode('utf-8'))
+            
+            # Add extracted images
+            if images:
+                for img_filename, img_data in images:
+                    zip_file.writestr(f"images/{img_filename}", img_data)
+                logger.info(f"Added {len(images)} images to ZIP")
+            else:
+                # Add empty folder to indicate no images
+                zip_file.writestr("images/.gitkeep", "")
+        
+        zip_buffer.seek(0)
+        
+        # Set response headers for ZIP file
+        response.headers['Content-Type'] = 'application/zip'
+        response.headers['Content-Disposition'] = f'attachment; filename="{Path(upload.filename).stem}_content.zip"'
+        
+        logger.info(f"Successfully created ZIP for PDF: {upload.filename}")
+        return zip_buffer.getvalue()
+        
+    except HTTPError:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in ZIP endpoint: {str(e)}")
+        raise HTTPError(500, f"Internal server error: {str(e)}")
+
+@app.route('/extract/zip', method='OPTIONS')
+def extract_pdf_zip_options():
+    """Handle CORS preflight for ZIP endpoint."""
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    return {}
+
 @app.route('/extract', method='OPTIONS')
 def extract_pdf_options():
     """Handle preflight CORS requests."""
@@ -309,7 +438,8 @@ def not_found(error):
         "error": "Endpoint not found",
         "available_endpoints": [
             "GET /health - Health check",
-            "POST /extract - Extract PDF content"
+            "POST /extract - Extract PDF content (JSON)",
+            "POST /extract/zip - Extract PDF content and images (ZIP)"
         ]
     })
 
@@ -324,7 +454,7 @@ def server_error(error):
 
 def main():
     """Main function to start the server."""
-    port = int(os.getenv('PORT', 3001))
+    port = int(os.getenv('PORT', 8080))
     host = os.getenv('HOST', '0.0.0.0')
     debug = os.getenv('DEBUG', 'false').lower() == 'true'
     

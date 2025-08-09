@@ -1,0 +1,56 @@
+services:
+  # PDF Processor - Development overrides
+  pdf-processor:
+    build:
+      context: ./services/pdf-processor
+      dockerfile: Dockerfile
+    volumes:
+      - ./services/pdf-processor:/app
+      - ./example-files:/app/example-files:ro
+    environment:
+      - DEBUG=true
+      - DEVELOPMENT=true
+      - PYTHONUNBUFFERED=1
+    command: python run-dev.py
+
+  # Admin Backend - Development overrides
+  admin-backend:
+    build:
+      context: ./services/admin-backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./services/admin-backend/src:/app/src
+      - ./packages:/app/packages
+    environment:
+      - NODE_ENV=development
+      - DEBUG=true
+    command: npm run dev
+
+  # User Backend - Development overrides
+  user-backend:
+    build:
+      context: ./services/user-backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./services/user-backend/src:/app/src
+      - ./packages:/app/packages
+    environment:
+      - NODE_ENV=development
+      - DEBUG=true
+    command: npm run dev
+
+  # Admin Frontend - Development overrides
+  admin-frontend:
+    volumes:
+      - ./apps/admin-frontend/src:/app/src
+      - ./apps/admin-frontend/public:/app/public
+      - ./packages:/app/packages
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+
+  # Mobile Frontend - Development overrides
+  mobile-frontend:
+    volumes:
+      - ./apps/mobile-frontend/src:/app/src
+      - ./apps/mobile-frontend/public:/app/public
+      - ./packages:/app/packages
+    command: npm run dev -- --host 0.0.0.0 --port 5174

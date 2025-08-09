@@ -50,7 +50,7 @@ if exist "requirements.txt" (
 
 REM Install development dependencies
 echo 🛠️  Installing development dependencies...
-pip install pytest pytest-cov black flake8 mypy pre-commit
+pip install pytest pytest-cov black flake8 mypy
 
 REM Create development requirements file
 echo 📝 Creating development requirements file...
@@ -61,7 +61,6 @@ echo pytest-cov^>=4.1.0
 echo black^>=23.7.0
 echo flake8^>=6.0.0
 echo mypy^>=1.5.0
-echo pre-commit^>=3.3.0
 echo.
 echo # Testing utilities
 echo httpx^>=0.24.0
@@ -80,7 +79,7 @@ if not exist ".env" (
     ) else (
         (
         echo # PDF Processor Environment Variables
-        echo PORT=3001
+        echo PORT=8080
         echo HOST=0.0.0.0
         echo DEBUG=true
         ) > .env
@@ -94,12 +93,12 @@ echo 📝 Creating development runner...
 echo @echo off
 echo REM Development runner for PDF processor
 echo echo 🚀 Starting PDF Processor in Development Mode
-echo echo 📡 Server will be available at: http://127.0.0.1:3001
+echo echo 📡 Server will be available at: http://127.0.0.1:8080
 echo echo 🔄 Auto-reload enabled
 echo echo 🐛 Debug mode enabled
 echo echo.
 echo set DEBUG=true
-echo set PORT=3001
+echo set PORT=8080
 echo set HOST=127.0.0.1
 echo python main.py
 ) > run-dev.bat
@@ -119,4 +118,4 @@ echo.
 echo 4. Format code:
 echo    black .
 echo.
-echo 🌐 The development server will run at: http://127.0.0.1:3001
+echo 🌐 The development server will run at: http://127.0.0.1:8080

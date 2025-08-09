@@ -19,7 +19,6 @@ This single command will:
 - Create virtual environment
 - Install all dependencies
 - Set up development tools
-- Configure pre-commit hooks
 
 ## 🏃 Running the Service
 
@@ -95,12 +94,12 @@ The development server automatically restarts when you modify:
 - **MyPy**: Type checking
 - **Pytest**: Testing
 
-### Pre-commit Hooks
-Automatically run quality checks on every commit:
-- Code formatting
-- Lint checks
-- Type checking
-- Test execution
+### Code Quality Tools
+Run quality checks manually:
+- `black .` - Code formatting
+- `flake8 .` - Lint checks  
+- `mypy .` - Type checking
+- `pytest` - Test execution
 
 ## 📁 Project Structure
 
@@ -158,7 +157,7 @@ chmod +x run-dev.py
 2. **Run Tests**: `make test` to ensure everything works
 3. **Modify Code**: Edit files and watch hot-reload in action
 4. **Add Features**: Follow the existing code patterns
-5. **Submit Changes**: Pre-commit hooks will ensure quality
+5. **Submit Changes**: Run `black .`, `flake8 .`, and `pytest` before committing
 
 ## 🆘 Getting Help
 

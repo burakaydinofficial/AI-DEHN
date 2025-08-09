@@ -1,92 +1,167 @@
-# DEHN - Hackathon Project
+# DEHN Hackathon Project 🚀
 
-A comprehensive multi-service application for document processing and management.
+A comprehensive multi-service document processing application built for hackathon development. This project extracts detailed layout information from PDF documents and provides both REST APIs and frontend interfaces for document analysis.
 
-## Project Structure
-
-This monorepo contains the following services:
+## 🏗️ Architecture
 
 ### Services
-- **`services/pdf-processor`** - Python service for PDF processing using PyMuPDF
-- **`services/admin-backend`** - Express TypeScript backend for admin operations
-- **`services/user-backend`** - Express TypeScript backend for user operations
+- **🐍 PDF Processor** (`services/pdf-processor/`) - Python service using Bottle and PyMuPDF for PDF analysis
+- **🔐 Admin Backend** (`services/admin-backend/`) - Express TypeScript API for admin operations  
+- **👤 User Backend** (`services/user-backend/`) - Express TypeScript API for user operations
 
 ### Frontend Applications
-- **`apps/admin-frontend`** - React admin panel (desktop-first)
-- **`apps/mobile-frontend`** - React mobile app (mobile-first)
+- **💻 Admin Frontend** (`apps/admin-frontend/`) - React TypeScript admin panel (desktop-first)
+- **📱 Mobile Frontend** (`apps/mobile-frontend/`) - React TypeScript mobile app (mobile-first)
 
 ### Shared Libraries
-- **`packages/api-models`** - Shared TypeScript API models and types
-- **`packages/ai-agent`** - Common AI agent library for LLM integration
+- **📋 API Models** (`packages/api-models/`) - Shared TypeScript types and interfaces
+- **🤖 AI Agent** (`packages/ai-agent/`) - Common library for LLM integration using Google Gemini
 
 ### Infrastructure
-- **`infrastructure/terraform`** - Terraform configurations for Google Cloud deployment
+- **☁️ Terraform** (`infrastructure/terraform/`) - Google Cloud Platform deployment
+- **🗄️ MongoDB Atlas** - Document metadata, user auth, and indexing
+- **📦 S3 Storage** - MinIO (local) / Google Cloud Storage (production)
 
-## Getting Started
+## 🚀 Quick Start with Docker (Recommended)
 
 ### Prerequisites
-- Node.js 18+
-- Python 3.9+
-- Docker (optional)
-- Google Cloud CLI (for deployment)
+- Docker & Docker Compose
+- Git
 
-### Development Setup
-
-1. Install dependencies for all services:
+### 1. Clone and Setup
 ```bash
-npm install
+git clone <repository-url>
+cd DEHN
+cp .env.example .env
+# Edit .env with your MongoDB Atlas connection string
 ```
 
-2. Set up Python environment for PDF processor:
+### 2. Start All Services
 ```bash
-cd services/pdf-processor
-pip install -r requirements.txt
-```
-
-3. Start development servers:
-```bash
-# Start all services in development mode
+# Start everything with Docker Compose
 npm run dev
+
+# Or use docker-compose directly
+docker-compose up --build
 ```
 
-## Services Overview
+This will start:
+- 🐍 PDF Processor: http://localhost:8080
+- 🔐 Admin Backend: http://localhost:3001
+- 👤 User Backend: http://localhost:3002
+- 💻 Admin Frontend: http://localhost:5173
+- 📱 Mobile Frontend: http://localhost:5174
+- 🗄️ MinIO (S3): http://localhost:9000 (Console: http://localhost:9001)
+- 🔴 Redis: localhost:6379
 
-### PDF Processor Service
-- **Technology**: Python, Bottle, PyMuPDF
-- **Port**: 3001
-- **Purpose**: Extract text and metadata from PDF files via HTTP endpoints
-
-### Admin Backend Service  
-- **Technology**: Express.js, TypeScript
-- **Port**: 3002
-- **Purpose**: Admin operations, database access, AI agent integration
-
-### User Backend Service
-- **Technology**: Express.js, TypeScript  
-- **Port**: 3003
-- **Purpose**: User operations, database access, AI agent integration
-
-### Admin Frontend
-- **Technology**: React, TypeScript
-- **Port**: 3000
-- **Purpose**: Desktop-first admin panel
-
-### Mobile Frontend
-- **Technology**: React, TypeScript
-- **Port**: 3004  
-- **Purpose**: Mobile-first user interface
-
-## Deployment
-
-This project is configured for deployment to Google Cloud Platform using Terraform.
-
+### 3. Test PDF Processing
 ```bash
+# Test with example file
+npm run test:pdf
+
+# Or manually:
+curl -X POST -F "file=@example-files/example-flyer.pdf" http://localhost:8080/extract
+```
+
+## 🛠️ Development Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start all services with Docker Compose |
+| `npm run dev:local` | Start services locally (requires manual setup) |
+| `npm run docker:down` | Stop all Docker services |
+| `npm run docker:logs` | View logs from all services |
+| `npm run docker:clean` | Clean up Docker containers and volumes |
+| `npm run test:pdf` | Test PDF processor with example file |
+
+## 📋 API Endpoints
+
+### PDF Processor (Port 8080)
+- `GET /health` - Health check
+- `POST /extract` - Extract PDF content (returns JSON)
+- `POST /extract/zip` - Extract PDF content + images (returns ZIP)
+
+### Admin Backend (Port 3001)
+- `GET /health` - Health check
+- `POST /api/auth/*` - Authentication endpoints
+- `GET|POST|PUT|DELETE /api/documents/*` - Document management
+- `GET|POST|PUT|DELETE /api/users/*` - User management
+- `POST /api/ai/*` - AI processing endpoints
+
+### User Backend (Port 3002)
+- `GET /health` - Health check
+- `POST /api/auth/*` - User authentication
+- `GET /api/documents/*` - Document access (user's own)
+- `POST /api/upload` - Document upload
+
+## 🧪 Enhanced PDF Processing Features
+
+The PDF processor now extracts comprehensive layout information:
+
+### Text Analysis
+- **Font Properties**: Family, size, weight, style, color
+- **Positioning**: Precise coordinates (x, y, width, height)
+- **Hierarchy**: Text blocks → Lines → Spans structure
+- **Formatting**: Bold, italic, superscript detection
+
+### Image Extraction
+- **Image Data**: Full image extraction as PNG files
+- **Positioning**: Bounding boxes and transformation matrices
+- **Metadata**: Color space, dimensions, file size
+- **ZIP Export**: Combined JSON analysis + extracted images
+
+## 🗄️ Database & Storage Architecture
+
+- **MongoDB Atlas**: Document metadata, user authentication, content indexing
+- **S3-Compatible Storage**: 
+  - **Development**: MinIO (local Docker container)
+  - **Production**: Google Cloud Storage buckets
+- **Redis**: Caching layer for improved performance
+
+## 🎯 Production Deployment
+
+### Google Cloud Platform
+```bash
+# Use production Docker Compose
+npm run docker:prod
+
+# Or deploy with Terraform
 cd infrastructure/terraform
 terraform init
 terraform plan
 terraform apply
 ```
 
-## License
+## 🧹 Project Improvements
 
-MIT License
+✅ **Removed Makefile** - Using npm scripts for consistency  
+✅ **Updated .gitignore** - Comprehensive patterns for all file types  
+✅ **Test output organization** - Results saved to `test_processor/` folder  
+✅ **Docker-first development** - Complete containerized stack  
+✅ **Image extraction** - New `/extract/zip` endpoint with image files  
+✅ **MongoDB Atlas integration** - Production-ready database  
+✅ **S3-compatible storage** - Local MinIO, production GCS  
+
+## 🐛 Troubleshooting
+
+### Docker Issues
+```bash
+# Reset everything
+npm run docker:clean
+docker system prune -a
+```
+
+### MongoDB Connection
+```bash
+# Verify connection string in .env
+# Check IP whitelist in MongoDB Atlas
+```
+
+### MinIO Access
+- Console: http://localhost:9001
+- Username: `dehn-access-key`
+- Password: `dehn-secret-key`
+
+---
+
+**Happy Coding! 🎉**

@@ -9,7 +9,7 @@ import json
 import sys
 from pathlib import Path
 
-def test_pdf_processor(pdf_path: str, server_url: str = "http://localhost:3001"):
+def test_pdf_processor(pdf_path: str, server_url: str = "http://localhost:8080"):
     """Test the PDF processor with enhanced layout information."""
     
     print(f"🧪 Testing PDF processor with file: {pdf_path}")
@@ -115,11 +115,34 @@ def test_pdf_processor(pdf_path: str, server_url: str = "http://localhost:3001")
                     print(f"     Color space: {img.get('colorspace_details', 'Unknown')}")
                     print(f"     File size: {img.get('size_bytes', 0)} bytes")
             
-            # Save detailed results to file
-            output_file = f"pdf_analysis_{Path(pdf_path).stem}.json"
+            # Save detailed results to subfolder
+            test_output_dir = Path("test_processor")
+            test_output_dir.mkdir(exist_ok=True)
+            
+            timestamp = Path(pdf_path).stem
+            output_file = test_output_dir / f"pdf_analysis_{timestamp}.json"
+            
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(result, f, indent=2, ensure_ascii=False)
             print(f"\n💾 Detailed results saved to: {output_file}")
+            
+            # Test the new zip endpoint if images were found
+            if result.get('images'):
+                print(f"\n📦 Testing zip endpoint with images...")
+                try:
+                    with open(pdf_path, 'rb') as pdf_file:
+                        files = {'file': pdf_file}
+                        zip_response = requests.post(f"{server_url}/extract/zip", files=files)
+                    
+                    if zip_response.status_code == 200:
+                        zip_file = test_output_dir / f"pdf_content_{timestamp}.zip"
+                        with open(zip_file, 'wb') as f:
+                            f.write(zip_response.content)
+                        print(f"✅ Zip file saved to: {zip_file}")
+                    else:
+                        print(f"⚠️ Zip endpoint failed: {zip_response.status_code}")
+                except Exception as e:
+                    print(f"⚠️ Could not test zip endpoint: {e}")
             
         else:
             print(f"❌ Error processing PDF: {response.status_code}")
@@ -138,11 +161,11 @@ def main():
     if len(sys.argv) < 2:
         print("Usage: python test_pdf_processor.py <pdf_file_path> [server_url]")
         print("Example: python test_pdf_processor.py sample.pdf")
-        print("Example: python test_pdf_processor.py sample.pdf http://localhost:3001")
+        print("Example: python test_pdf_processor.py sample.pdf http://localhost:8080")
         return
     
     pdf_path = sys.argv[1]
-    server_url = sys.argv[2] if len(sys.argv) > 2 else "http://localhost:3001"
+    server_url = sys.argv[2] if len(sys.argv) > 2 else "http://localhost:8080"
     
     test_pdf_processor(pdf_path, server_url)
 

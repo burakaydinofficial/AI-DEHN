@@ -26,7 +26,11 @@
     "lint": "npm run lint --workspaces --if-present",
     "type-check": "npm run type-check --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
-    "install:python": "cd services/pdf-processor && pip install -r requirements.txt"
+    "install:python": "cd services/pdf-processor && pip install -r requirements.txt",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:clean": "docker compose down -v --rmi all --remove-orphans"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
