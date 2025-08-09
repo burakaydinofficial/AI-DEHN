@@ -107,13 +107,15 @@ documentsRouter.post('/upload', upload.single('file'), async (req: Request, res:
 
     // Update DB with results
     const update: Partial<Document> = {
-      status: 'completed',
+      status: 'processed',
       processedAt: new Date(),
       metadata: result.metadata,
-      extractedText: result.content?.full_text,
+      // also persist full text into the generic 'content' field from shared models
+      content: result.content?.full_text as any,
+      extractedText: result.content?.full_text as any,
       storage: { ...(docRecord.storage || {}), zipBundle: zipUri, zipKey, analysisJson: analysisUri, analysisKey, imagesPrefix: `documents/${id}/images/` },
       stats: {
-        pageCount: result.metadata.page_count,
+        pageCount: result.metadata?.page_count,
         totalChars: (result as any).content?.total_chars,
         imagesCount: (result as any).content?.images_count
       }

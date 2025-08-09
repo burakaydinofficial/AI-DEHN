@@ -129,7 +129,7 @@ temp/
 
 # Storage
 uploads/
-storage/
+# storage/ # causes some libraries to be excluded from git
 bucket/
 minio_data/
 

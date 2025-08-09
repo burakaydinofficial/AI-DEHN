@@ -1,9 +1,10 @@
+/* Basic app layout overrides */
 :root {
+  color-scheme: light;
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
 
@@ -13,21 +14,45 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
+html, body, #root { height: 100%; }
 body {
   margin: 0;
   display: flex;
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+/* Simple nav link styling */
+.nav-link {
+  color: #334155;
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+.nav-link:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Buttons */
+button {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #0f172a;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+button:hover {
+  background: #f9fafb;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 h1 {
@@ -53,6 +78,9 @@ button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
+
+/* Tables */
+table th, table td { font-size: 14px; }
 
 @media (prefers-color-scheme: light) {
   :root {
