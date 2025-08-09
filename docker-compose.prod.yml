@@ -66,16 +66,6 @@ services:
     environment:
       - NODE_ENV=production
 
-  # Remove Redis from production (use external service)
-  redis:
-    image: redis:7-alpine
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-        reservations:
-          memory: 64M
-
   # Use external MinIO or cloud storage in production
   minio:
     profiles:

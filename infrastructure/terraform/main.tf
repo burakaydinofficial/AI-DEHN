@@ -187,12 +187,12 @@ resource "google_cloud_run_service" "admin_backend" {
         image = "gcr.io/${var.project_id}/dehn-admin-backend:latest"
         
         ports {
-          container_port = 3002
+          container_port = 3001
         }
         
         env {
           name  = "PORT"
-          value = "3002"
+          value = "3001"
         }
         
         env {
@@ -260,12 +260,12 @@ resource "google_cloud_run_service" "user_backend" {
         image = "gcr.io/${var.project_id}/dehn-user-backend:latest"
         
         ports {
-          container_port = 3003
+          container_port = 3002
         }
         
         env {
           name  = "PORT"
-          value = "3003"
+          value = "3002"
         }
         
         env {

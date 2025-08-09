@@ -11,7 +11,6 @@
 | Mobile Frontend | **5174** | http://localhost:5174 | Mobile app (Vite + 1) |
 | MinIO Storage | **9000** | http://localhost:9000 | S3-compatible storage |
 | MinIO Console | **9001** | http://localhost:9001 | MinIO web interface |
-| Redis | **6379** | localhost:6379 | Cache (standard Redis port) |
 
 ## 📁 **FILE STRUCTURE RULES**
 

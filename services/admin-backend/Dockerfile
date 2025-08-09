@@ -3,16 +3,12 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy and install dependencies
 COPY package*.json ./
-COPY ../../packages/api-models ./packages/api-models
-COPY ../../packages/ai-agent ./packages/ai-agent
-
-# Install dependencies
 RUN npm ci
 
 # Copy source code
-COPY . .
+COPY . ./
 
 # Build the application
 RUN npm run build
@@ -22,19 +18,20 @@ FROM node:18-alpine AS production
 
 WORKDIR /app
 
-# Install only production dependencies
-COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+# Install curl for health checks
+RUN apk add --no-cache curl
 
-# Copy built application
-COPY --from=builder /app/dist ./dist
+# Copy built application and package.json
+COPY --from=builder /app/dist ./
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
 
 # Expose port
-EXPOSE 3002
+EXPOSE 3001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3002/health || exit 1
+    CMD curl -f http://localhost:3001/health || exit 1
 
 # Run the application
-CMD ["node", "dist/server.js"]
+CMD ["node", "server.js"]

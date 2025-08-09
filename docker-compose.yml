@@ -44,7 +44,7 @@ services:
       - S3_ACCESS_KEY=dehn-access-key
       - S3_SECRET_KEY=dehn-secret-key
       - S3_BUCKET_NAME=pdf-documents
-      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+      - CORS_ORIGINS=http://localhost:5173
     depends_on:
       - pdf-processor
       - minio
@@ -72,7 +72,7 @@ services:
       - S3_ACCESS_KEY=dehn-access-key
       - S3_SECRET_KEY=dehn-secret-key
       - S3_BUCKET_NAME=pdf-documents
-      - CORS_ORIGINS=http://localhost:5174,http://localhost:3000
+      - CORS_ORIGINS=http://localhost:5174
     depends_on:
       - pdf-processor
       - minio
@@ -113,7 +113,7 @@ services:
       - ./apps/mobile-frontend/src:/app/src
       - ./apps/mobile-frontend/public:/app/public
     environment:
-      - VITE_API_URL=http://localhost:3002
+      - VITE_API_URL=http://localhost:3001
       - VITE_PDF_PROCESSOR_URL=http://localhost:8080
     depends_on:
       - user-backend
@@ -159,25 +159,8 @@ services:
       "
     restart: "no"
 
-  # Redis (for caching)
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
 volumes:
   minio_data:
-    driver: local
-  redis_data:
     driver: local
   pdf_storage:
     driver: local

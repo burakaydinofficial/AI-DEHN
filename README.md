@@ -52,7 +52,6 @@ This will start:
 - 💻 Admin Frontend: http://localhost:5173
 - 📱 Mobile Frontend: http://localhost:5174
 - 🗄️ MinIO (S3): http://localhost:9000 (Console: http://localhost:9001)
-- 🔴 Redis: localhost:6379
 
 ### 3. Test PDF Processing
 ```bash
@@ -116,7 +115,6 @@ The PDF processor now extracts comprehensive layout information:
 - **S3-Compatible Storage**: 
   - **Development**: MinIO (local Docker container)
   - **Production**: Google Cloud Storage buckets
-- **Redis**: Caching layer for improved performance
 
 ## 🎯 Production Deployment
 

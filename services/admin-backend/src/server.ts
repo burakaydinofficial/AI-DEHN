@@ -23,7 +23,7 @@ const config: AppConfig = {
   jwtSecret: process.env.JWT_SECRET || 'admin-jwt-secret-change-in-production',
   aiApiKey: process.env.AI_API_KEY || '',
   pdfProcessorUrl: process.env.PDF_PROCESSOR_URL || 'http://localhost:8080',
-  corsOrigins: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
+  corsOrigins: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:5173'],
   environment: (process.env.NODE_ENV as any) || 'development'
 };
 

@@ -17,8 +17,7 @@ This starts the entire stack with hot-reload enabled:
 | 👤 User Backend | 3002 | User API with MongoDB |
 | 💻 Admin Frontend | 5173 | React admin panel |
 | 📱 Mobile Frontend | 5174 | React mobile app |
-| 📦 MinIO (S3) | 9000/9001 | File storage |
-| 🔴 Redis | 6379 | Caching |
+| �️ MinIO Console | 9001 | S3-compatible storage web UI |
 
 ## 🧪 Test Your Setup
 
