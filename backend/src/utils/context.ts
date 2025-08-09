@@ -1,5 +1,5 @@
 import type { Db } from 'mongodb';
-import type { StorageProvider } from './storage';
+import type { StorageProvider } from './index';
 
 let _db: Db | undefined;
 let _storage: StorageProvider | undefined;

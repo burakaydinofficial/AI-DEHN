@@ -19,41 +19,10 @@ services:
       start_period: 30s
       retries: 3
 
-  # Admin Backend - Express TypeScript API for admin operations
-  admin-backend:
+  # Backend - Consolidated Express TypeScript API for all operations
+  backend:
     build:
-      context: ./services/admin-backend
-      dockerfile: Dockerfile
-    ports:
-      - "3091:3091"
-    env_file:
-      - .env.local
-    environment:
-      - NODE_ENV=development
-      - PORT=3091
-      - PDF_PROCESSOR_URL=http://pdf-processor:3095
-      - CORS_ORIGINS=http://localhost:8091
-      - DATABASE_NAME=dehn
-      - MINIO_ENDPOINT=http://minio:9000
-      - MINIO_BUCKET_PRIVATE=dehn-private
-      - MINIO_BUCKET_PUBLIC=dehn-public
-      - MINIO_ACCESS_KEY=dehn-access-key
-      - MINIO_SECRET_KEY=dehn-secret-key
-      - MINIO_USE_SSL=false
-    depends_on:
-      - pdf-processor
-      - minio
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3091/health"]
-      interval: 30s
-      timeout: 10s
-      start_period: 5s
-      retries: 3
-
-  # User Backend - Express TypeScript API for user operations
-  user-backend:
-    build:
-      context: ./services/user-backend
+      context: ./backend
       dockerfile: Dockerfile
     ports:
       - "3090:3090"
@@ -63,7 +32,7 @@ services:
       - NODE_ENV=development
       - PORT=3090
       - PDF_PROCESSOR_URL=http://pdf-processor:3095
-      - CORS_ORIGINS=http://localhost:8090
+      - CORS_ORIGINS=http://localhost:3000
       - DATABASE_NAME=dehn
       - MINIO_ENDPOINT=http://minio:9000
       - MINIO_BUCKET_PRIVATE=dehn-private
@@ -76,6 +45,24 @@ services:
       - minio
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3090/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+  # Frontend - Consolidated React application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_BACKEND_URL=http://backend:3090
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
       interval: 30s
       timeout: 10s
       start_period: 5s

@@ -28,16 +28,12 @@ graph TD
 
 ### Core Services
 - **🐍 PDF Processor** (`services/pdf-processor/`) - Python service using PyMuPDF for layout-aware PDF extraction
-- **🔐 Admin Backend** (`services/admin-backend/`) - Express TypeScript API for document processing workflow  
-- **👤 User Backend** (`services/user-backend/`) - Express TypeScript API for public document access
+- **💻 Backend** (`backend/`) - Consolidated Express TypeScript API for all operations (admin & user)
+- **🎨 Frontend** (`frontend/`) - Consolidated React TypeScript application (admin & user interfaces)
 
-### Frontend Applications
-- **💻 Admin Panel** (`apps/admin-frontend/`) - React TypeScript interface for document processing workflow
-- **📱 User App** (`apps/mobile-frontend/`) - React TypeScript interface for multi-language document viewing
-
-### Shared Libraries
-- **📋 API Models** (`packages/api-models/`) - Shared TypeScript types and interfaces
-- **🤖 AI Agent** (`packages/ai-agent/`) - LLM integration for content analysis and translation
+### Infrastructure Components
+- **�️ Database** - MongoDB Atlas for metadata, processing status, and content relationships
+- **� Storage** - Private & Public buckets for document storage (GCS/MinIO)
 
 ### Storage Architecture
 - **🔒 Private Bucket** - Original PDFs, extracted content, processing artifacts (Admin access only)
@@ -160,64 +156,52 @@ curl -X POST -F "file=@example-files/example-flyer.pdf" http://localhost:3095/ex
 - `POST /extract` - Extract PDF content with layout information (returns JSON)
 - `POST /extract/zip` - Extract PDF content + images as ZIP archive
 
-### Admin Backend (Port 3091) - Document Processing Workflow
+### Backend (Port 3090) - Consolidated API
 **Authentication & Users:**
-- `POST /api/auth/login` - Admin authentication
-- `POST /api/auth/logout` - Admin logout  
-- `GET /api/auth/me` - Get current admin user
-- `GET /api/users` - List all users (paginated)
-- `GET /api/users/:id` - Get user by ID
-- `PUT /api/users/:id` - Update user
-- `DELETE /api/users/:id` - Delete user
+- `POST /api/auth/login` - User/Admin authentication
+- `POST /api/auth/logout` - User/Admin logout  
+- `GET /api/auth/me` - Get current user
+- `GET /api/admin/users` - List all users (paginated, admin only)
+- `GET /api/admin/users/:id` - Get user by ID (admin only)
+- `PUT /api/admin/users/:id` - Update user (admin only)
+- `DELETE /api/admin/users/:id` - Delete user (admin only)
 
-**Document Processing Pipeline:**
-- `GET /api/documents` - List all documents with processing status (paginated)
-- `POST /api/documents/upload` - Upload PDF and trigger extraction workflow
-- `GET /api/documents/:id` - Get document details and processing status
-- `GET /api/documents/:id/status` - Poll processing status
-- `DELETE /api/documents/:id` - Delete document and all associated content
+**Document Processing Pipeline (Admin):**
+- `GET /api/admin/documents` - List all documents with processing status (paginated)
+- `POST /api/admin/documents/upload` - Upload PDF and trigger extraction workflow
+- `GET /api/admin/documents/:id` - Get document details and processing status
+- `GET /api/admin/documents/:id/status` - Poll processing status
+- `DELETE /api/admin/documents/:id` - Delete document and all associated content
 
 **Content Grouping & Reduction:**
-- `POST /api/documents/:id/analyze` - Trigger AI content grouping phase
-- `GET /api/documents/:id/groups` - Get content groups and language mappings
-- `PUT /api/documents/:id/groups` - Update content group assignments
+- `POST /api/admin/documents/:id/analyze` - Trigger AI content grouping phase
+- `GET /api/admin/documents/:id/groups` - Get content groups and language mappings
+- `PUT /api/admin/documents/:id/groups` - Update content group assignments
 
 **Translation & Generation:**
-- `POST /api/documents/:id/translate` - Generate missing language versions
-- `GET /api/documents/:id/translations` - Get available translations
-- `PUT /api/documents/:id/translations/:lang` - Update specific translation
+- `POST /api/admin/documents/:id/translate` - Generate missing language versions
+- `GET /api/admin/documents/:id/translations` - Get available translations
+- `PUT /api/admin/documents/:id/translations/:lang` - Update specific translation
 
 **Publishing & Content Selection:**
-- `GET /api/documents/:id/versions` - Get all available versions by language
-- `POST /api/documents/:id/publish` - Publish selected languages with image hash processing
-- `GET /api/documents/:id/published` - Get published status and public URLs
-- `GET /api/documents/:id/images/hashes` - Get image hash mappings for published content
-- `POST /api/documents/:id/images/optimize` - Optimize images for public distribution
-- `GET /api/documents/:id/layout/validate` - Validate layout for print compatibility
-
-**Image & Asset Management:**
-- `GET /api/images/:hash` - Get image metadata by hash
-- `POST /api/images/generate-hashes` - Generate SHA-256 hashes for document images
-- `GET /api/assets/public/:documentId` - Get public asset URLs for published document
+- `GET /api/admin/documents/:id/versions` - Get all available versions by language
+- `POST /api/admin/documents/:id/publish` - Publish selected languages with image hash processing
+- `GET /api/admin/documents/:id/published` - Get published status and public URLs
 
 **AI-Powered Processing:**
 - `POST /api/ai/chat/start` - Start AI analysis session
 - `POST /api/ai/chat/:sessionId` - Continue AI conversation
 - `GET /api/ai/chat/sessions` - Get processing sessions
 - `POST /api/ai/analyze-document` - Analyze document structure and content
-- `POST /api/ai/group-content` - AI-powered content grouping
-- `POST /api/ai/translate` - AI translation with context awareness
-- `POST /api/ai/optimize-layout` - Layout optimization suggestions
+- `POST /api/ai/insights` - Extract insights from document content
+- `POST /api/ai/summarize` - Generate document summaries
+- `POST /api/ai/questions` - Generate questions based on content
 
-### User Backend (Port 3090) - Public Document Access
-- `GET /health` - Health check
+**Public Document Access:**
 - `GET /api/documents` - List published documents with language availability
 - `GET /api/documents/:id` - Get published document metadata and available languages
-- `GET /api/documents/:id/pages/:lang` - Get pre-baked page layout JSON for language
-- `GET /api/documents/:id/page/:pageNum/:lang` - Get specific page JSON with hash-named image references
-- `GET /api/documents/:id/print/:lang` - Get print-optimized layout JSON
+- `GET /api/documents/:id/pages/:lang` - Get page layout JSON for language
 - `GET /api/documents/search` - Search published documents by content and language
-- `GET /api/languages` - Get available languages for all published documents
 
 **Direct Public Access (No API needed):**
 - `https://public-bucket/documents/:id/:lang/pages.json` - Direct JSON access

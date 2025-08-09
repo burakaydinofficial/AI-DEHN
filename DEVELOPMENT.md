@@ -8,18 +8,12 @@ DEHN is a sophisticated document processing pipeline for multi-language content 
 
 ```
 DEHN/
-├── services/                    # Backend services
-│   ├── pdf-processor/          # Python service (PyMuPDF + layout extraction)
-│   ├── admin-backend/          # Express TS admin workflow API
-│   └── user-backend/           # Express TS public access API
-├── apps/                       # Frontend applications
-│   ├── admin-frontend/         # React admin workflow panel
-│   └── mobile-frontend/        # React public document viewer
-├── packages/                   # Shared libraries
-│   ├── api-models/            # TypeScript types and interfaces
-│   └── ai-agent/              # AI/LLM integration (Gemini)
-└── infrastructure/            # Deployment configuration
-    └── terraform/             # Google Cloud infrastructure
+├── backend/                    # Consolidated Express TypeScript API
+├── frontend/                   # Consolidated React TypeScript application
+├── services/                   # Specialized services
+│   └── pdf-processor/          # Python service (PyMuPDF + layout extraction)
+└── infrastructure/             # Deployment configuration
+    └── terraform/              # Google Cloud infrastructure
 ```
 
 ## Core Workflow
@@ -59,10 +53,8 @@ DEHN/
 | Service | URL | Purpose |
 |---------|-----|---------|
 | PDF Processor | http://localhost:3095 | PDF analysis & image extraction |
-| Admin Backend | http://localhost:3091 | Admin API endpoints |
-| User Backend | http://localhost:3090 | User API endpoints |
-| Admin Frontend | http://localhost:8091 | Admin web interface |
-| User Frontend | http://localhost:8090 | Mobile web interface |
+| Backend | http://localhost:3090 | Consolidated API endpoints |
+| Frontend | http://localhost:3000 | Consolidated web interface |
 
 ## API Endpoints
 
@@ -71,18 +63,22 @@ DEHN/
 - `POST /extract` - Extract PDF with layout information and positioning data
 - `POST /extract/zip` - Extract PDF + images as ZIP with complete structure
 
-### Admin Backend Service (TypeScript) - Document Processing Workflow
-**Document Processing Pipeline:**
-- `POST /api/documents/upload` - Upload PDF and trigger extraction workflow
-- `GET /api/documents` - List documents with processing status (paginated, searchable)
-- `GET /api/documents/:id` - Get document details and current processing phase
-- `GET /api/documents/:id/status` - Poll real-time processing status
-- `DELETE /api/documents/:id` - Delete document and all associated content
+### Backend Service (TypeScript) - Consolidated API
+**Admin Document Processing Pipeline:**
+- `POST /api/admin/documents/upload` - Upload PDF and trigger extraction workflow
+- `GET /api/admin/documents` - List documents with processing status (paginated, searchable)
+- `GET /api/admin/documents/:id` - Get document details and current processing phase
+- `GET /api/admin/documents/:id/status` - Poll real-time processing status
+- `DELETE /api/admin/documents/:id` - Delete document and all associated content
+
+**Public Document Access:**
+- `GET /api/documents` - List published documents
+- `GET /api/documents/:id` - Get published document details
 
 **Content Grouping & Analysis:**
-- `POST /api/documents/:id/analyze` - Trigger AI content grouping phase
-- `GET /api/documents/:id/groups` - Get AI-generated content groups by language
-- `PUT /api/documents/:id/groups` - Update and approve content group assignments
+- `POST /api/admin/documents/:id/analyze` - Trigger AI content grouping phase
+- `GET /api/admin/documents/:id/groups` - Get AI-generated content groups by language
+- `PUT /api/admin/documents/:id/groups` - Update and approve content group assignments
 
 **Translation Management:**
 - `POST /api/documents/:id/translate` - Generate missing language versions with AI
