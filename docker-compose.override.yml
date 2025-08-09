@@ -7,10 +7,13 @@ services:
     volumes:
       - ./services/pdf-processor:/app
       - ./example-files:/app/example-files:ro
+      - ./google-credentials.json:/app/google-credentials.json:ro
     environment:
       - DEBUG=true
       - DEVELOPMENT=true
       - PYTHONUNBUFFERED=1
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/google-credentials.json
+      - GOOGLE_CLOUD_PROJECT=servusai-468510
     command: python run-dev.py
 
   # Admin Backend - Development overrides
@@ -20,9 +23,13 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./services/admin-backend/src:/app/src
+      - ./google-credentials.json:/app/google-credentials.json:ro
     environment:
       - NODE_ENV=development
       - DEBUG=true
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/google-credentials.json
+      - GOOGLE_CLOUD_PROJECT=servusai-468510
+      - GCS_BUCKET_NAME=dehn-documents-servusai-468510-dev
     command: npm run dev
 
   # User Backend - Development overrides
@@ -32,7 +39,11 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./services/user-backend/src:/app/src
+      - ./google-credentials.json:/app/google-credentials.json:ro
     environment:
       - NODE_ENV=development
       - DEBUG=true
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/google-credentials.json
+      - GOOGLE_CLOUD_PROJECT=servusai-468510
+      - GCS_BUCKET_NAME=dehn-documents-servusai-468510-dev
     command: npm run dev

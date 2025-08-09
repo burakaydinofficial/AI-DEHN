@@ -1,10 +1,42 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
-import { 
-  AIPrompt, 
-  AIResponse, 
-  ChatMessage, 
-  ChatSession 
-} from '@dehn/api-models';
+
+// Local type definitions (previously imported from @dehn/api-models)
+export interface AIPrompt {
+  id: string;
+  text: string;
+  context?: string;
+  temperature?: number;
+  maxTokens?: number;
+}
+
+export interface AIResponse {
+  id: string;
+  text: string;
+  model: string;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  finishReason: string;
+  createdAt: Date;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: Date;
+}
+
+export interface ChatSession {
+  id: string;
+  userId: string;
+  title?: string;
+  messages: ChatMessage[];
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export interface AIAgentConfig {
   apiKey: string;

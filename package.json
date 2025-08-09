@@ -5,20 +5,24 @@
   "private": true,
   "workspaces": [
     "services/admin-backend",
-    "services/user-backend", 
+    "services/user-backend",
     "apps/admin-frontend",
     "apps/mobile-frontend",
     "packages/api-models",
     "packages/ai-agent"
   ],
   "scripts": {
+    "setup": "scripts/setup-dev.sh",
     "dev": "docker compose up --build",
-    "dev:local": "concurrently \"npm run dev:pdf\" \"npm run dev:admin-backend\" \"npm run dev:user-backend\" \"npm run dev:admin-frontend\" \"npm run dev:mobile-frontend\"",
-    "dev:pdf": "cd services/pdf-processor && python main.py",
+    "dev:local": "npm run env:check && concurrently -n \"PDF,Admin,User,AdminUI,MobileUI\" -c \"magenta,blue,green,yellow,cyan\" \"npm run dev:pdf\" \"npm run dev:admin-backend\" \"npm run dev:user-backend\" \"npm run dev:admin-frontend\" \"npm run dev:mobile-frontend\"",
+    "dev:services": "npm run env:check && concurrently -n \"PDF,Admin,User\" -c \"magenta,blue,green\" \"npm run dev:pdf\" \"npm run dev:admin-backend\" \"npm run dev:user-backend\"",
+    "dev:frontend": "concurrently -n \"AdminUI,MobileUI\" -c \"yellow,cyan\" \"npm run dev:admin-frontend\" \"npm run dev:mobile-frontend\"",
+    "dev:pdf": "cd services/pdf-processor && source venv/bin/activate && python main.py",
     "dev:admin-backend": "cd services/admin-backend && npm run dev",
     "dev:user-backend": "cd services/user-backend && npm run dev",
     "dev:admin-frontend": "cd apps/admin-frontend && npm run dev",
     "dev:mobile-frontend": "cd apps/mobile-frontend && npm run dev",
+    "env:check": "node -e \"if(!require('fs').existsSync('.env.local')){console.error('❌ .env.local not found! Run npm run setup first.');process.exit(1);}console.log('✅ Environment configured');\"",
     "build": "npm run build:packages && npm run build:services && npm run build:apps",
     "build:packages": "npm run build --workspaces --if-present packages/*",
     "build:services": "npm run build --workspaces --if-present services/*",
@@ -52,5 +56,6 @@
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

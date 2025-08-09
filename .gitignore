@@ -6,6 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+package-lock.json
 
 # Python
 __pycache__/
@@ -46,6 +47,8 @@ venv.bak/
 .env.development.local
 .env.test.local
 .env.production.local
+
+google-credentials.json
 
 # IDE
 .vscode/
