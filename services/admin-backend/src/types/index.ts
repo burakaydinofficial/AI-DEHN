@@ -67,6 +67,17 @@ export interface ExtractionStats {
   imagesCount?: number;
 }
 
+export interface TranslationArtifact {
+  name: string;
+  contentType: string;
+  size: number;
+  uri: string;
+  uploadedAt: Date;
+  language?: string;
+  sourceLayoutLang?: string;
+  sourceTextLang?: string;
+}
+
 export interface Document {
   id: string;
   filename: string;
@@ -82,6 +93,7 @@ export interface Document {
   extractedText?: string;
   storage?: StoragePaths;
   stats?: ExtractionStats;
+  translations?: TranslationArtifact[];
 }
 
 export interface DocumentUploadResponse {

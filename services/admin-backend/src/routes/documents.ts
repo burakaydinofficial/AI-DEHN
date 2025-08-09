@@ -165,3 +165,22 @@ documentsRouter.delete('/:id', async (req: Request, res: Response, next: NextFun
     next(error);
   }
 });
+
+// Upload generated translation artifact to private bucket
+documentsRouter.post('/:id/translations', upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file', timestamp: new Date() } as ApiResponse);
+    const db = getDb();
+    const storage = getStorage();
+    const id = req.params.id;
+    const doc = await db.collection('documents').findOne({ id });
+    if (!doc) return res.status(404).json({ success: false, message: 'Document not found', timestamp: new Date() } as ApiResponse);
+
+    const artifactKey = `documents/${id}/translations/${req.file.originalname}`;
+    const uri = await storage.uploadPrivate({ key: artifactKey, contentType: req.file.mimetype, body: req.file.buffer });
+
+    await db.collection('documents').updateOne({ id }, { $push: { translations: { name: req.file.originalname, contentType: req.file.mimetype, size: req.file.size, uri, uploadedAt: new Date() } } });
+
+    res.json({ success: true, message: 'Translation uploaded', timestamp: new Date() } as ApiResponse);
+  } catch (error) { next(error); }
+});
