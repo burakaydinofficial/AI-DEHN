@@ -13,10 +13,10 @@ services:
     volumes:
       - ./example-files:/app/example-files:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3095/health"]
+      test: ["CMD", "python", "-c", "import urllib.request, sys; urllib.request.urlopen('http://localhost:3095/health'); print('OK')"]
       interval: 30s
       timeout: 10s
-      start_period: 5s
+      start_period: 30s
       retries: 3
 
   # Admin Backend - Express TypeScript API for admin operations
@@ -60,35 +60,6 @@ services:
       timeout: 10s
       start_period: 5s
       retries: 3
-
-  # Admin Frontend - React TypeScript admin panel (desktop-first design)
-  admin-frontend:
-    build:
-      context: ./apps/admin-frontend
-      dockerfile: Dockerfile
-      target: development
-    ports:
-      - "8091:8091"
-    environment:
-      - NODE_ENV=development
-      - VITE_ADMIN_BACKEND_URL=http://localhost:3091
-      - VITE_PDF_PROCESSOR_URL=http://localhost:3095
-    depends_on:
-      - admin-backend
-
-  # User Frontend - React TypeScript mobile app (mobile-first design)
-  mobile-frontend:
-    build:
-      context: ./apps/mobile-frontend
-      dockerfile: Dockerfile
-      target: development
-    ports:
-      - "8090:8090"
-    environment:
-      - NODE_ENV=development
-      - VITE_USER_BACKEND_URL=http://localhost:3090
-    depends_on:
-      - user-backend
 
   # MinIO - S3-compatible storage for development
   minio:

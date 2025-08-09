@@ -25,6 +25,7 @@
     "build:apps": "npm run build --workspaces --if-present apps/*",
     "test": "npm run test --workspaces --if-present",
     "test:pdf": "curl -X POST -F \"file=@example-files/example-flyer.pdf\" http://localhost:3095/extract",
+    "test:pdf-zip": "curl -X POST -F \"file=@example-files/example-manual.pdf\" -F \"extract_images=true\" http://localhost:3095/extract/zip --output pdf-test-result.zip && echo 'ZIP file saved as pdf-test-result.zip'",
     "lint": "npm run lint --workspaces --if-present",
     "type-check": "npm run type-check --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",

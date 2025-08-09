@@ -1,38 +1,25 @@
-# User Backend Dockerfile
-FROM node:18-alpine AS builder
-
-WORKDIR /app
-
-# Copy service package files and install dependencies
-COPY package*.json ./
-RUN npm install --no-package-lock
-
-# Copy service source code
-COPY src ./src
-COPY tsconfig.json ./
-
-# Build the application
-RUN npm run build
-
-# Production stage
-FROM node:18-alpine AS production
+# User Backend Dockerfile - Simple Development Build
+FROM node:18-alpine
 
 WORKDIR /app
 
 # Install curl for health checks
 RUN apk add --no-cache curl
 
-# Copy built application and dependencies
-COPY --from=builder /app/dist ./
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
+# Copy package.json and install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy source code
+COPY src ./src
+COPY tsconfig.json ./
 
 # Expose port
 EXPOSE 3090
 
-# Health check  
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3090/health || exit 1
 
-# Run the application
-CMD ["node", "server.js"]
+# Run the application in development mode
+CMD ["npm", "run", "dev"]

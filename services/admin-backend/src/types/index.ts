@@ -53,6 +53,36 @@ export interface UpdateUserRequest {
   isActive?: boolean;
 }
 
+// Document types
+export interface Document {
+  id: string;
+  filename: string;
+  originalName: string;
+  size: number;
+  mimeType: string;
+  uploadedAt: Date;
+  status: 'processing' | 'completed' | 'failed';
+  metadata?: PDFMetadata;
+  pages?: number;
+  extractedText?: string;
+}
+
+export interface DocumentUploadResponse {
+  success: boolean;
+  documentId: string;
+  filename: string;
+  status: string;
+  message?: string;
+}
+
+export interface PDFProcessingResult {
+  success: boolean;
+  pages: any[];
+  metadata: PDFMetadata;
+  images?: any[];
+  totalChars: number;
+}
+
 // PDF Processing types
 export interface PDFMetadata {
   title: string;
