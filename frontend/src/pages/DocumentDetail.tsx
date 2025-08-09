@@ -77,6 +77,12 @@ export function DocumentDetail() {
           <li>Reduced: {doc.storage?.reducedJson ? 'available' : '—'}</li>
           <li>Chunks: {doc.storage?.chunksJson ? 'available' : '—'}</li>
           <li>Images: {doc.storage?.imagesPrefix ? 'uploaded' : '—'}</li>
+          {doc.availableLanguages && doc.availableLanguages.length > 0 && (
+            <li>Languages detected: {doc.availableLanguages.join(', ')}</li>
+          )}
+          {doc.contentReduction && (
+            <li>Text groups: {doc.contentReduction.totalGroups} groups processed with {doc.contentReduction.metadata.aiModel}</li>
+          )}
         </ul>
       </section>
 
