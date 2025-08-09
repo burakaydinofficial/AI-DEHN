@@ -1,0 +1,52 @@
+# Docker Compose for PDF Processor Development
+version: '3.8'
+
+services:
+  pdf-processor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount source code for hot-reload
+      - .:/app
+      # Mount example files
+      - ../../example-files:/app/example-files
+    environment:
+      - FLASK_ENV=development
+      - PYTHONUNBUFFERED=1
+      - DEBUG=1
+      - PORT=8080
+      - HOST=0.0.0.0
+    command: python run-dev.py
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for caching (optional)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  redis_data:
+
+# Networks
+networks:
+  default:
+    name: dehn-dev-network
