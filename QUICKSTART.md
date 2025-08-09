@@ -1,15 +1,43 @@
-# 🚀 DEHN De| Service | Port | Purpose |
+# 🚀 DEHN Development Quick Start
+
+Your | Service | Port | Purpose |
 |---------|------|---------|  
 | 🐍 PDF Processor | 3095 | PDF analysis & image extraction |
 | 🔐 Admin Backend | 3091 | Admin API with MongoDB |
 | 👤 User Backend | 3090 | User API with MongoDB |
 | 💻 Admin Frontend | 8091 | React admin panel |
 | 📱 User Frontend | 8090 | React mobile app |
-| 🗄️ MinIO Console | 9001 | S3-compatible storage web UI |t Quick Start
-
-Your comprehensive Docker-based development environment is ready!
+| 🗄️ MinIO Console | 9001 | S3-compatible storage web UI |nsive Docker-based development environment is ready!
 
 ## ⚡ One-Command Start
+
+```bash
+npm run dev
+```
+
+This starts the entire stack with hot-reload enabled:
+
+| Service | Port | Purpose |
+|---------|------|---------|  
+| 🐍 PDF Processor | 3095 | PDF analysis & image extraction |
+| 🔐 Admin Backend | 3091 | Admin API with MongoDB |
+| 👤 User Backend | 3090 | User API with MongoDB |
+| 💻 Admin Frontend | 8091 | React admin panel |
+| 📱 User Frontend | 8090 | React mobile app |
+| 🗄️ MinIO Console | 9001 | S3-compatible storage web UI |
+
+## 🧪 Test Your Setup
+
+```bash
+# Test PDF processing
+npm run test:pdf
+
+# Or manually test endpoints
+curl -X POST -F "file=@example-files/example-flyer.pdf" http://localhost:3095/extract
+curl -X POST -F "file=@example-files/example-flyer.pdf" http://localhost:3095/extract/zip --output result.zip
+```
+
+## 🛠️ Development Commands
 
 ```bash
 npm run dev

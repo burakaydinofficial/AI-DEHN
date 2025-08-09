@@ -82,16 +82,30 @@ curl -X POST -F "file=@example-files/example-flyer.pdf" http://localhost:3095/ex
 
 ### Admin Backend (Port 3091)
 - `GET /health` - Health check
-- `POST /api/auth/*` - Authentication endpoints
-- `GET|POST|PUT|DELETE /api/documents/*` - Document management
-- `GET|POST|PUT|DELETE /api/users/*` - User management
-- `POST /api/ai/*` - AI processing endpoints
+- `POST /api/auth/login` - Admin login
+- `POST /api/auth/logout` - Admin logout  
+- `GET /api/auth/me` - Get current admin user
+- `GET /api/documents` - List all documents (paginated)
+- `POST /api/documents/upload` - Upload document
+- `GET /api/documents/:id` - Get document by ID
+- `DELETE /api/documents/:id` - Delete document
+- `GET /api/users` - List all users (paginated)
+- `GET /api/users/:id` - Get user by ID
+- `PUT /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Delete user
+- `POST /api/ai/chat/start` - Start AI chat session
+- `POST /api/ai/chat/:sessionId` - Continue chat conversation
+- `GET /api/ai/chat/sessions` - Get chat sessions
+- `POST /api/ai/analyze-document` - Analyze document with AI
+- `POST /api/ai/insights` - Generate content insights
+- `POST /api/ai/summarize` - Summarize content
+- `POST /api/ai/questions` - Generate questions from content
 
 ### User Backend (Port 3090)
 - `GET /health` - Health check
-- `POST /api/auth/*` - User authentication
-- `GET /api/documents/*` - Document access (user's own)
-- `POST /api/upload` - Document upload
+- `GET /api/auth` - Placeholder auth endpoints (coming soon)
+- `GET /api/documents` - Placeholder document endpoints (coming soon)
+- `GET /api/ai` - Placeholder AI endpoints (coming soon)
 
 ## 🧪 Enhanced PDF Processing Features
 

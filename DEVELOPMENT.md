@@ -60,15 +60,29 @@ DEHN/
 
 ### Admin Backend Service (TypeScript)
 - `POST /api/auth/login` - Admin login
-- `GET /api/users` - List all users
-- `GET /api/documents` - List all documents
-- `POST /api/documents/upload` - Upload document
+- `POST /api/auth/logout` - Admin logout
+- `GET /api/auth/me` - Get current admin user
+- `GET /api/documents` - List all documents (paginated, with search)
+- `POST /api/documents/upload` - Upload PDF document
+- `GET /api/documents/:id` - Get document by ID
+- `DELETE /api/documents/:id` - Delete document
+- `GET /api/users` - List all users (paginated, with search)
+- `GET /api/users/:id` - Get user by ID  
+- `PUT /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Delete user
 - `POST /api/ai/chat/start` - Start AI chat session
+- `POST /api/ai/chat/:sessionId` - Continue chat conversation
+- `GET /api/ai/chat/sessions` - Get user's chat sessions
 - `POST /api/ai/analyze-document` - Analyze document with AI
+- `POST /api/ai/insights` - Generate content insights
+- `POST /api/ai/summarize` - Summarize content  
+- `POST /api/ai/questions` - Generate questions from content
 
 ### User Backend Service (TypeScript)
 - `GET /health` - Health check
-- Additional endpoints coming soon...
+- `GET /api/auth` - Placeholder (coming soon)
+- `GET /api/documents` - Placeholder (coming soon)
+- `GET /api/ai` - Placeholder (coming soon)
 
 ## Development Workflow
 
