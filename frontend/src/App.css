@@ -1,0 +1,74 @@
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.app-header {
+  margin-bottom: 2rem;
+}
+
+.app-header h1 {
+  color: #646cff;
+  margin-bottom: 1rem;
+}
+
+.app-header nav a {
+  margin: 0 1rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #646cff;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.25s;
+}
+
+.app-header nav a:hover {
+  background-color: #646cff;
+  color: white;
+}
+
+.app-main {
+  text-align: left;
+}
+
+/* Responsive styles */
+.app.mobile {
+  padding: 1rem;
+  max-width: 100%;
+}
+
+.app.mobile .app-header h1 {
+  font-size: 2em;
+}
+
+.app.mobile .app-header nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.app.mobile .app-header nav a {
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .app {
+    padding: 1rem;
+    max-width: 100%;
+  }
+  
+  .app-header h1 {
+    font-size: 2em;
+  }
+  
+  .app-header nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .app-header nav a {
+    margin: 0;
+  }
+}
