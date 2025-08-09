@@ -204,7 +204,72 @@ Navigate to the respective URLs in your browser:
 
 ## Deployment
 
-### Google Cloud Platform
+### Google Cloud Platform (Recommended)
+
+The project includes comprehensive Terraform infrastructure-as-code for seamless GCP deployment.
+
+#### Prerequisites
+
+1. **Install Required Tools**
+   ```bash
+   # Google Cloud SDK
+   curl https://sdk.cloud.google.com | bash
+   exec -l $SHELL
+   gcloud init
+   
+   # Terraform
+   brew install terraform  # macOS
+   # or download from: https://www.terraform.io/downloads
+   
+   # Docker (for building images)
+   brew install docker  # macOS
+   ```
+
+2. **GCP Project Setup**
+   - Create a new Google Cloud Project
+   - Enable billing on the project
+   - Note your project ID
+
+#### Quick Deployment
+
+1. **Automated Infrastructure Setup**
+   ```bash
+   cd infrastructure/terraform
+   ./setup.sh
+   ```
+   
+   This script will:
+   - Check all prerequisites
+   - Authenticate with Google Cloud
+   - Configure terraform.tfvars automatically
+   - Initialize and validate Terraform
+   - Create and optionally apply deployment plan
+
+2. **Build and Push Docker Images**
+   ```bash
+   # Still in infrastructure/terraform directory
+   ./build-and-push.sh
+   ```
+   
+   This will build and push all service images to Google Container Registry.
+
+3. **Deploy Infrastructure**
+   ```bash
+   terraform apply
+   ```
+
+4. **Configure Secrets**
+   ```bash
+   # Set JWT secret
+   echo -n "your-jwt-secret-here" | \
+     gcloud secrets versions add jwt-secret-dev --data-file=-
+   
+   # Set AI API key (Google Gemini)
+   echo -n "your-gemini-api-key" | \
+     gcloud secrets versions add ai-api-key-dev --data-file=-
+   ```
+
+#### Manual Deployment
 
 1. **Setup Infrastructure**
    ```bash
@@ -217,16 +282,78 @@ Navigate to the respective URLs in your browser:
    terraform apply
    ```
 
-2. **Deploy Services**
+2. **Build Docker Images**
    ```bash
-   # Build Docker images
-   docker build -t gcr.io/YOUR_PROJECT/dehn-pdf-processor services/pdf-processor
-   docker build -t gcr.io/YOUR_PROJECT/dehn-admin-backend services/admin-backend
+   # From project root
+   cd /Users/burakk/Hackathon/DEHN
+   
+   PROJECT_ID="your-gcp-project-id"
+   
+   # Build images
+   docker build -t gcr.io/$PROJECT_ID/dehn-pdf-processor services/pdf-processor
+   docker build -t gcr.io/$PROJECT_ID/dehn-admin-backend services/admin-backend
+   docker build -t gcr.io/$PROJECT_ID/dehn-user-backend services/user-backend
+   
+   # Configure Docker for GCR
+   gcloud auth configure-docker
    
    # Push to Google Container Registry
-   docker push gcr.io/YOUR_PROJECT/dehn-pdf-processor
-   docker push gcr.io/YOUR_PROJECT/dehn-admin-backend
+   docker push gcr.io/$PROJECT_ID/dehn-pdf-processor
+   docker push gcr.io/$PROJECT_ID/dehn-admin-backend
+   docker push gcr.io/$PROJECT_ID/dehn-user-backend
    ```
+
+#### Configuration Options
+
+The Terraform configuration supports extensive customization via `terraform.tfvars`:
+
+```hcl
+project_id = "my-dehn-project-12345"
+region = "us-central1"
+environment = "prod"
+max_scale = 50          # Max Cloud Run instances
+min_scale = 1           # Min Cloud Run instances
+cpu_limit = "2000m"     # CPU per service
+memory_limit = "1Gi"    # Memory per service
+public_access = false   # Require authentication
+storage_class = "STANDARD"  # Storage bucket class
+```
+
+#### Post-Deployment
+
+After successful deployment, get your service URLs:
+
+```bash
+terraform output
+```
+
+The infrastructure includes:
+- **Cloud Run Services**: Serverless, auto-scaling containers
+- **Cloud Storage**: Document storage with lifecycle management
+- **Firestore**: NoSQL database for metadata
+- **Secret Manager**: Secure API key storage
+- **VPC Network**: Private networking
+- **IAM**: Proper access controls
+
+### Local Development with Docker
+
+For local development and testing:
+
+```bash
+# Start all services
+npm run dev
+
+# Or start individual services
+npm run dev:local
+```
+
+### Production Considerations
+
+1. **Custom Domains**: Configure Cloud DNS and SSL certificates
+2. **Monitoring**: Set up Cloud Monitoring and Logging
+3. **Security**: Review IAM roles and network security
+4. **Backup**: Configure automated backups for Firestore
+5. **CDN**: Set up Cloud CDN for static assets
 
 ## Troubleshooting
 
