@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import axios, { AxiosError } from 'axios';
 import type { ApiResponse, Document } from '../types/api';
 
-const API_BASE = import.meta.env.VITE_ADMIN_API_BASE || 'http://localhost:3091/api';
+const API_BASE = import.meta.env.VITE_ADMIN_API_BASE || 'http://localhost:3001/api';
 
 type ListResponse = ApiResponse<Document[]> & { pagination?: { page: number; limit: number; total: number; pages: number } };
 

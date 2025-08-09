@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import type { ApiResponse, Document } from '../types/api';
 
-const API_BASE = import.meta.env.VITE_ADMIN_API_BASE || 'http://localhost:3091/api';
+const API_BASE = import.meta.env.VITE_ADMIN_API_BASE || 'http://localhost:3001/api';
 
 export function DocumentDetail() {
   const { id } = useParams<{ id: string }>();

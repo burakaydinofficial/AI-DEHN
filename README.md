@@ -26,8 +26,8 @@ docker compose logs -f
 ```
 
 ### 3. Access the Application
-- **Frontend**: http://localhost:3001
-- **Backend API**: http://localhost:3000  
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:3001  
 - **PDF Processor**: http://localhost:3002
 - **MongoDB**: localhost:27017
 
@@ -47,16 +47,16 @@ DEHN/
 
 ### Backend (`backend/`)
 - **Technology**: Express.js + TypeScript
-- **Port**: 3000
+- **Port**: 3001
 - **Features**: Authentication, document management, AI integration
 - **Database**: MongoDB (local Docker container)
 - **Storage**: Local file system
 
 ### Frontend (`frontend/`)
 - **Technology**: React + TypeScript  
-- **Port**: 3001
+- **Port**: 3000
 - **Features**: Responsive UI, document upload/management
-- **API**: Connects to backend at port 3000
+- **API**: Connects to backend at port 3001
 
 ### PDF Processor (`services/pdf-processor/`)
 - **Technology**: Python + Bottle + PyMuPDF
@@ -103,8 +103,8 @@ MONGODB_URI=mongodb://mongodb:27017/dehn
 STORAGE_ROOT=/app/storage
 
 # Services
-BACKEND_PORT=3000
-FRONTEND_PORT=3001
+BACKEND_PORT=3001
+FRONTEND_PORT=3000
 PDF_PROCESSOR_PORT=3002
 
 # Security

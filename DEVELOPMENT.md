@@ -61,8 +61,8 @@ MONGODB_URI=mongodb://mongodb:27017/dehn
 STORAGE_ROOT=/app/storage
 
 # Services
-BACKEND_PORT=3000
-FRONTEND_PORT=3001
+BACKEND_PORT=3001
+FRONTEND_PORT=3000
 PDF_PROCESSOR_PORT=3002
 
 # Security
@@ -70,7 +70,7 @@ JWT_SECRET=your-secure-jwt-secret-key
 AI_API_KEY=your-google-gemini-api-key
 
 # CORS
-CORS_ORIGINS=http://localhost:3001,http://localhost:5173
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 ```
 
 ### Development vs Docker Compose
@@ -89,7 +89,7 @@ CORS_ORIGINS=http://localhost:3001,http://localhost:5173
 
 ### Backend (`backend/`)
 **Technology**: Express.js + TypeScript
-**Port**: 3000
+**Port**: 3001
 **Features**:
 - RESTful API endpoints
 - JWT authentication
@@ -106,7 +106,7 @@ CORS_ORIGINS=http://localhost:3001,http://localhost:5173
 
 ### Frontend (`frontend/`)
 **Technology**: React + TypeScript + Vite
-**Port**: 3001
+**Port**: 3000
 **Features**:
 - Responsive UI (desktop and mobile)
 - Document upload interface
@@ -205,8 +205,8 @@ docker compose up pdf-processor mongodb
 ```
 
 ### 3. Access Applications
-- **Frontend**: http://localhost:3001
-- **Backend API**: http://localhost:3000
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:3001
 - **PDF Processor**: http://localhost:3002
 - **MongoDB**: localhost:27017
 
@@ -315,7 +315,7 @@ npm run test
 ### Check Service Health
 ```bash
 # Backend health check
-curl http://localhost:3000/health
+curl http://localhost:3001/health
 
 # PDF Processor health check  
 curl http://localhost:3002/health
@@ -415,7 +415,7 @@ JWT_SECRET=strong-random-secret-256-bits
 AI_API_KEY=production-gemini-api-key
 
 # Configure for production URLs
-BACKEND_URL=http://your-domain.com:3000
+BACKEND_URL=http://your-domain.com:3001
 FRONTEND_PORT=80
 
 # Use production MongoDB
