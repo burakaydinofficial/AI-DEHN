@@ -18,7 +18,7 @@ documentsRouter.get('/', async (req: Request, res: Response, next: NextFunction)
       db.collection('documents').countDocuments({ published: { $exists: true, $ne: [] } })
     ]);
 
-    res.json({
+    return res.json({
       success: true,
       data: items as unknown as Document[],
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
@@ -35,6 +35,6 @@ documentsRouter.get('/:id', async (req: Request, res: Response, next: NextFuncti
       { projection: { _id: 0, id: 1, originalName: 1, uploadedAt: 1, published: 1 } }
     );
     if (!doc) return res.status(404).json({ success: false, message: 'Not found', timestamp: new Date() } as ApiResponse);
-    res.json({ success: true, data: doc as unknown as Document, timestamp: new Date() } as ApiResponse<Document>);
+    return res.json({ success: true, data: doc as unknown as Document, timestamp: new Date() } as ApiResponse<Document>);
   } catch (error) { return next(error); }
 });

@@ -60,7 +60,7 @@ usersRouter.get('/', async (req: Request, res: Response, next: NextFunction) => 
       timestamp: new Date()
     };
 
-    res.json(response);
+    return res.json(response);
   } catch (error) {
     return next(error);
   }
@@ -79,7 +79,7 @@ usersRouter.get('/:id', async (req: Request, res: Response, next: NextFunction) 
       } as ApiResponse);
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: user,
       timestamp: new Date()
@@ -113,7 +113,7 @@ usersRouter.put('/:id', async (req: Request, res: Response, next: NextFunction) 
 
     mockUsers[userIndex] = user;
 
-    res.json({
+    return res.json({
       success: true,
       data: user,
       message: 'User updated successfully',
@@ -139,7 +139,7 @@ usersRouter.delete('/:id', async (req: Request, res: Response, next: NextFunctio
 
     mockUsers.splice(userIndex, 1);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'User deleted successfully',
       timestamp: new Date()

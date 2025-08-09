@@ -130,7 +130,7 @@ documentsRouter.post('/upload', upload.single('file'), async (req: Request, res:
       const id = (req as any)._docId; // best-effort
       if (id) await db.collection('documents').updateOne({ id }, { $set: { status: 'failed', error: String(error), processedAt: new Date() } });
     } catch {}
-    return return next(error);
+    return next(error);
   }
 });
 
@@ -144,7 +144,7 @@ documentsRouter.get('/:id/status', async (req: Request, res: Response, next: Nex
     }
     return res.json({ success: true, data: doc as unknown as Document, timestamp: new Date() } as ApiResponse<Document>);
   } catch (error) {
-    return return next(error);
+    return next(error);
   }
 });
 
@@ -161,7 +161,7 @@ documentsRouter.get('/', async (req: Request, res: Response, next: NextFunction)
       db.collection('documents').countDocuments()
     ]);
 
-    res.json({
+    return res.json({
       success: true,
       data: items as any,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
@@ -180,7 +180,7 @@ documentsRouter.get('/:id', async (req: Request, res: Response, next: NextFuncti
     if (!doc) {
       return res.status(404).json({ success: false, message: 'Document not found', timestamp: new Date() } as ApiResponse);
     }
-    res.json({ success: true, data: doc as unknown as Document, timestamp: new Date() } as ApiResponse<Document>);
+    return res.json({ success: true, data: doc as unknown as Document, timestamp: new Date() } as ApiResponse<Document>);
   } catch (error) {
     return next(error);
   }
@@ -191,7 +191,7 @@ documentsRouter.delete('/:id', async (req: Request, res: Response, next: NextFun
   try {
     const db = getDb();
     await db.collection('documents').deleteOne({ id: req.params.id });
-    res.json({ success: true, message: 'Document deleted', timestamp: new Date() } as ApiResponse);
+    return res.json({ success: true, message: 'Document deleted', timestamp: new Date() } as ApiResponse);
   } catch (error) {
     return next(error);
   }
@@ -215,7 +215,7 @@ documentsRouter.post('/:id/translations', upload.single('file'), async (req: Req
       { $push: { translations: { name: req.file.originalname, contentType: req.file.mimetype, size: req.file.size, uri, uploadedAt: new Date() } } }
     );
 
-    res.json({ success: true, message: 'Translation uploaded', timestamp: new Date() } as ApiResponse);
+    return res.json({ success: true, message: 'Translation uploaded', timestamp: new Date() } as ApiResponse);
   } catch (error) { return next(error); }
 });
 
@@ -245,7 +245,7 @@ documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: Ne
 
     await db.collection('documents').updateOne({ id }, { $set: { 'storage.reducedJson': reducedUri, 'storage.reducedKey': reducedKey } });
 
-    res.json({ success: true, message: 'Reduced content created', timestamp: new Date(), data: { key: reducedKey } } as ApiResponse);
+    return res.json({ success: true, message: 'Reduced content created', timestamp: new Date(), data: { key: reducedKey } } as ApiResponse);
   } catch (error) { return next(error); }
 });
 
@@ -275,7 +275,7 @@ documentsRouter.post('/:id/chunks', async (req: Request, res: Response, next: Ne
 
     await db.collection('documents').updateOne({ id }, { $set: { 'storage.chunksJson': chunksUri, 'storage.chunksKey': chunksKey } });
 
-    res.json({ success: true, message: 'Chunks generated', timestamp: new Date(), data: { key: chunksKey } } as ApiResponse);
+    return res.json({ success: true, message: 'Chunks generated', timestamp: new Date(), data: { key: chunksKey } } as ApiResponse);
   } catch (error) { return next(error); }
 });
 
@@ -306,7 +306,7 @@ documentsRouter.post('/:id/generate-translation', async (req: Request, res: Resp
       { $push: { translations: { name: `${targetLanguage}.json`, contentType: 'application/json', size: Buffer.byteLength(JSON.stringify(translated)), uri: tUri, uploadedAt: new Date(), language: targetLanguage, sourceLayoutLang: layoutRefLang, sourceTextLang: textRefLang } } }
     );
 
-    res.json({ success: true, message: 'Translation generated', timestamp: new Date(), data: { key: tKey } } as ApiResponse);
+    return res.json({ success: true, message: 'Translation generated', timestamp: new Date(), data: { key: tKey } } as ApiResponse);
   } catch (error) { return next(error); }
 });
 
@@ -344,6 +344,6 @@ documentsRouter.post('/:id/publish', async (req: Request, res: Response, next: N
       { $push: { published: { language, version, url, publishedAt: new Date(), artifactKey: srcKey } } }
     );
 
-    res.json({ success: true, message: 'Published', timestamp: new Date(), data: { url } } as ApiResponse);
+    return res.json({ success: true, message: 'Published', timestamp: new Date(), data: { url } } as ApiResponse);
   } catch (error) { return next(error); }
 });
