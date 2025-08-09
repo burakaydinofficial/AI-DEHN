@@ -1,8 +1,4 @@
 /* Admin Layout Specific Styles */
-.admin-container {
-  background-color: #f9fafb; /* bg-gray-50 */
-  min-height: calc(100vh - 120px); /* Account for main header */
-}
 
 /* Admin Card Styles */
 .admin-card {
@@ -31,14 +27,7 @@
   text-transform: capitalize;
 }
 
-/* Stats Card Grid */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
+/* Stats Card Grid - Remove fixed styling, let components handle it */
 .stats-card {
   background-color: white;
   border: 1px solid #e5e7eb;
@@ -47,7 +36,7 @@
   text-align: center;
 }
 
-/* Content Grid for Two Column Layout */
+/* Content Grid for Two Column Layout - Simplified */
 .content-grid {
   display: grid;
   grid-template-columns: 1fr;

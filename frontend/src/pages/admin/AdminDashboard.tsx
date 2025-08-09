@@ -6,26 +6,14 @@ import { DecompositionPage } from './DecompositionPage';
 import { EnrichmentPage } from './EnrichmentPage';
 import { PublishingPage } from './PublishingPage';
 import { FeedbackPage } from './FeedbackPage';
+import { ADMIN_TABS, AdminTabType } from '../../constants/adminTabs';
 import '../../admin.css';
-
-const ADMIN_TABS = {
-  dashboard: 'dashboard',
-  ingestion: 'ingestion',
-  decomposition: 'decomposition',
-  enrichment: 'enrichment',
-  publishing: 'publishing',
-  feedback: 'feedback'
-} as const;
-
-type AdminTabType = typeof ADMIN_TABS[keyof typeof ADMIN_TABS];
 
 export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTabType>(ADMIN_TABS.dashboard);
 
-  const handleTabChange = (tab: string) => {
-    if (Object.values(ADMIN_TABS).includes(tab as AdminTabType)) {
-      setActiveTab(tab as AdminTabType);
-    }
+  const handleTabChange = (tab: AdminTabType) => {
+    setActiveTab(tab);
   };
 
   const renderContent = () => {
@@ -48,10 +36,8 @@ export const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="admin-container">
-      <AdminLayout activeTab={activeTab} onTabChange={handleTabChange}>
-        {renderContent()}
-      </AdminLayout>
-    </div>
+    <AdminLayout activeTab={activeTab} onTabChange={handleTabChange}>
+      {renderContent()}
+    </AdminLayout>
   );
 };
