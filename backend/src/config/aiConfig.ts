@@ -22,30 +22,30 @@ export interface AIPromptConfig extends AIProcessingConfig {
 export const CONTENT_REDUCTION_CONFIG = {
   // Text grouping configuration
   textGrouping: {
-    model: 'gemini-1.5-pro',
+    model: 'gemini-2.5-flash',
     temperature: 0.2,
-    maxOutputTokens: 4000,
-    timeout: 30000,
+    maxOutputTokens: 65536,
+    timeout: 300000,
     retryAttempts: 2,
     fallbackStrategy: 'position-based' as const
   },
 
   // Language detection configuration
   languageDetection: {
-    model: 'gemini-1.5-pro',
+    model: 'gemini-2.5-flash',
     temperature: 0.1,
-    maxOutputTokens: 10,
-    timeout: 10000,
+    maxOutputTokens: 65536,
+    timeout: 100000,
     retryAttempts: 3,
     fallbackStrategy: 'simple' as const
   },
 
   // Markdown generation configuration
   markdownGeneration: {
-    model: 'gemini-1.5-pro',
+    model: 'gemini-2.5-flash',
     temperature: 0.3,
-    maxOutputTokens: 2000,
-    timeout: 20000,
+    maxOutputTokens: 65536,
+    timeout: 200000,
     retryAttempts: 1,
     fallbackStrategy: 'simple' as const
   }
@@ -69,8 +69,8 @@ export const AI_PROCESSING_SETTINGS = {
   minBlockLength: 3,
   
   // Model preferences
-  primaryModel: 'gemini-1.5-pro',
-  fallbackModel: 'gemini-1.5-flash',
+  primaryModel: 'gemini-2.5-flash',
+  fallbackModel: 'gemini-2.5-flash',
   
   // Logging
   enableDetailedLogging: true,
