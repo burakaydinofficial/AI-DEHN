@@ -158,8 +158,8 @@ async function performStandardGrouping(
       aiLogs.push({
         timestamp: new Date(),
         phase: 'text-grouping',
-        prompt: prompt.substring(0, AI_PROCESSING_SETTINGS.logPromptLength) + '...',
-        response: response.text.substring(0, AI_PROCESSING_SETTINGS.logResponseLength) + '...',
+        prompt: prompt,
+        response: response.text,
         model: config.model
       });
     }
