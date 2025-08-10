@@ -546,23 +546,19 @@ documentsRouter.post('/:id/publish', async (req: Request, res: Response, next: N
 function buildTranslationPrompt(
   contentReductionData: ContentReductionResult,
   sourceLanguage: string,
-  targetLanguage: string,
-  translationStrategy: string,
-  qualityLevel: string,
-  preserveLayout: boolean
+  targetLanguage: string
 ): string {
   const groups = contentReductionData.groups || [];
   
   return `
-Translate the following text groups from ${sourceLanguage} to ${targetLanguage}.
+You are a professional translator. Translate the following text groups from ${sourceLanguage} to ${targetLanguage}.
 
-Translation Instructions:
-- Strategy: ${translationStrategy}
-- Quality Level: ${qualityLevel}
-- Preserve Layout: ${preserveLayout ? 'Yes' : 'No'}
+Instructions:
 - Maintain the exact structure and order of text groups
 - Preserve technical terms and proper nouns when appropriate
 - Keep formatting markers and special characters intact
+- Ensure translations are contextually accurate and natural
+- Preserve layout structure and grouping
 
 Source Text Groups:
 ${groups.map((group, index) => `
@@ -571,11 +567,11 @@ Type: ${group.type || 'unknown'}
 Content: ${group.originalTexts?.[0]?.text || ''}
 `).join('\n')}
 
-Required Output Format (JSON):
+Return ONLY a valid JSON object with this exact structure:
 {
   "translatedGroups": [
     {
-      "id": "group_id",
+      "id": "group_1",
       "type": "group_type", 
       "originalTexts": [
         {
@@ -592,7 +588,7 @@ Required Output Format (JSON):
   ]
 }
 
-Translate all groups and return the complete JSON structure.`;
+Translate all ${groups.length} groups and return the complete JSON structure.`;
 }
 
 // Helper function to calculate translation quality score
@@ -626,15 +622,7 @@ documentsRouter.post('/:id/translate', async (req: Request, res: Response, next:
     const { id: documentId } = req.params;
     const {
       targetLanguages = [],
-      sourceLanguage,
-      preserveLayout = true,
-      translationStrategy = 'contextual',
-      qualityLevel = 'balanced',
-      aiModel = 'gemini-2.5-flash'
-    }: TranslationGenerationRequest & { 
-      translationStrategy?: string;
-      qualityLevel?: string;
-      aiModel?: string;
+      sourceLanguage
     } = req.body;
 
     const db = getDb();
@@ -727,18 +715,14 @@ documentsRouter.post('/:id/translate', async (req: Request, res: Response, next:
         const contextPrompt = buildTranslationPrompt(
           contentReductionData,
           detectedSourceLang,
-          targetLang,
-          translationStrategy,
-          qualityLevel,
-          preserveLayout
+          targetLang
         );
 
-        // Perform AI translation
+        // Perform AI translation with default model and settings
         const startTime = Date.now();
         const translationResponse = await aiAgent.generateContent(contextPrompt, {
-          model: aiModel,
           maxOutputTokens: 8000,
-          temperature: qualityLevel === 'creative' ? 0.7 : qualityLevel === 'high' ? 0.3 : 0.5
+          temperature: 0.3
         });
 
         const processingTime = Date.now() - startTime;
@@ -767,7 +751,7 @@ documentsRouter.post('/:id/translate', async (req: Request, res: Response, next:
           textReference: detectedSourceLang,
           generatedAt: new Date(),
           metadata: {
-            aiModel,
+            aiModel: 'gemini-2.5-flash',
             processingTime,
             contextLanguages: contentReductionData.languagesDetected || [],
             qualityScore: calculateQualityScore(translatedGroups, contentReductionData.groups || [])
@@ -798,9 +782,9 @@ documentsRouter.post('/:id/translate', async (req: Request, res: Response, next:
           sourceTextLang: detectedSourceLang,
           version: 'generated',
           metadata: {
-            aiModel,
-            translationStrategy,
-            qualityLevel,
+            aiModel: 'gemini-2.5-flash',
+            translationStrategy: 'contextual',
+            qualityLevel: 'high',
             processingTime,
             groupCount: translatedGroups.length
           }

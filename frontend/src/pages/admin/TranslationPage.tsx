@@ -47,11 +47,7 @@ interface TranslationArtifact {
 
 interface TranslationParams {
   targetLanguages: string[];
-  translationStrategy: 'contextual' | 'literal' | 'creative';
-  qualityLevel: 'fast' | 'balanced' | 'high' | 'creative';
-  aiModel: 'gemini-1.5-flash' | 'gemini-2.5-flash';
   sourceLanguage?: string;
-  preserveLayout: boolean;
 }
 
 const AVAILABLE_LANGUAGES = [
@@ -72,35 +68,13 @@ const AVAILABLE_LANGUAGES = [
   { code: 'tr', name: 'Turkish', flag: '🇹🇷' }
 ];
 
-const AI_MODELS = [
-  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash', description: 'Fast, cost-effective' },
-  { value: 'gemini-2.5-flash', label: 'Gemini 1.5 Pro', description: 'High quality, more accurate' }
-];
-
-const TRANSLATION_STRATEGIES = [
-  { value: 'contextual', label: 'Contextual', description: 'Maintains context and meaning' },
-  { value: 'literal', label: 'Literal', description: 'Direct word-to-word translation' },
-  { value: 'creative', label: 'Creative', description: 'Adaptive, culturally aware' }
-];
-
-const QUALITY_LEVELS = [
-  { value: 'fast', label: 'Fast', description: 'Quick, basic quality' },
-  { value: 'balanced', label: 'Balanced', description: 'Good balance of speed and quality' },
-  { value: 'high', label: 'High Quality', description: 'Best quality, slower' },
-  { value: 'creative', label: 'Creative', description: 'Most adaptive, slowest' }
-];
-
 export const TranslationPage: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [translating, setTranslating] = useState<Set<string>>(new Set());
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
   const [translationParams, setTranslationParams] = useState<TranslationParams>({
-    targetLanguages: [],
-    translationStrategy: 'contextual',
-    qualityLevel: 'balanced',
-    aiModel: 'gemini-2.5-flash',
-    preserveLayout: true
+    targetLanguages: []
   });
 
   const fetchDocuments = async () => {
@@ -281,106 +255,34 @@ export const TranslationPage: React.FC = () => {
       <div className="admin-card mb-6">
         <div className="admin-card-header">
           <h2>Translation Configuration</h2>
+          <p className="text-sm text-gray-600">Select target languages for AI-powered translation</p>
         </div>
         <div className="admin-card-content">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Target Languages */}
-            <div className="space-y-3">
-              <label className="admin-label">
-                Target Languages ({translationParams.targetLanguages.length} selected)
-              </label>
-              <div className="language-grid">
-                {AVAILABLE_LANGUAGES.map(lang => (
-                  <button
-                    key={lang.code}
-                    type="button"
-                    onClick={() => toggleTargetLanguage(lang.code)}
-                    className={`language-option ${
-                      translationParams.targetLanguages.includes(lang.code) 
-                        ? 'language-option-selected' 
-                        : 'language-option-unselected'
-                    }`}
-                  >
-                    <span className="text-lg">{lang.flag}</span>
-                    <span className="text-sm font-medium">{lang.name}</span>
-                  </button>
-                ))}
-              </div>
+          {/* Target Languages */}
+          <div className="space-y-3">
+            <label className="admin-label">
+              Target Languages ({translationParams.targetLanguages.length} selected)
+            </label>
+            <div className="language-grid">
+              {AVAILABLE_LANGUAGES.map(lang => (
+                <button
+                  key={lang.code}
+                  type="button"
+                  onClick={() => toggleTargetLanguage(lang.code)}
+                  className={`language-option ${
+                    translationParams.targetLanguages.includes(lang.code) 
+                      ? 'language-option-selected' 
+                      : 'language-option-unselected'
+                  }`}
+                >
+                  <span className="text-lg">{lang.flag}</span>
+                  <span className="text-sm font-medium">{lang.name}</span>
+                </button>
+              ))}
             </div>
-
-            {/* Configuration Options */}
-            <div className="space-y-4">
-              <div>
-                <label className="admin-label">AI Model</label>
-                <select 
-                  value={translationParams.aiModel}
-                  onChange={(e) => setTranslationParams(prev => ({ 
-                    ...prev, 
-                    aiModel: e.target.value as TranslationParams['aiModel'] 
-                  }))}
-                  className="admin-select"
-                >
-                  {AI_MODELS.map(model => (
-                    <option key={model.value} value={model.value}>
-                      {model.label} - {model.description}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="admin-label">Translation Strategy</label>
-                <select 
-                  value={translationParams.translationStrategy}
-                  onChange={(e) => setTranslationParams(prev => ({ 
-                    ...prev, 
-                    translationStrategy: e.target.value as TranslationParams['translationStrategy'] 
-                  }))}
-                  className="admin-select"
-                >
-                  {TRANSLATION_STRATEGIES.map(strategy => (
-                    <option key={strategy.value} value={strategy.value}>
-                      {strategy.label} - {strategy.description}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="admin-label">Quality Level</label>
-                <select 
-                  value={translationParams.qualityLevel}
-                  onChange={(e) => setTranslationParams(prev => ({ 
-                    ...prev, 
-                    qualityLevel: e.target.value as TranslationParams['qualityLevel'] 
-                  }))}
-                  className="admin-select"
-                >
-                  {QUALITY_LEVELS.map(quality => (
-                    <option key={quality.value} value={quality.value}>
-                      {quality.label} - {quality.description}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="preserveLayout"
-                  checked={translationParams.preserveLayout}
-                  onChange={(e) => setTranslationParams(prev => ({ 
-                    ...prev, 
-                    preserveLayout: e.target.checked 
-                  }))}
-                  className="admin-checkbox"
-                />
-                <label htmlFor="preserveLayout" className="admin-label-inline">
-                  Preserve Layout Structure
-                </label>
-              </div>
-            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Translations use the latest AI model with optimized prompts for maximum quality and accuracy.
+            </p>
           </div>
         </div>
       </div>
