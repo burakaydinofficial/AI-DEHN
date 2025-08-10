@@ -183,16 +183,41 @@ export interface LanguageText {
   isOriginal: boolean; // true for extracted, false for generated
 }
 
+export interface LanguageText {
+  language: string; // ISO language code (e.g., 'en', 'tr', 'de')
+  text: string;
+  bbox: [number, number, number, number];
+  confidence: number; // Language detection confidence
+  isOriginal: boolean; // true for extracted, false for generated
+}
+
+export interface ContentReductionGroup {
+  id: string;
+  type: 'title' | 'paragraph' | 'list' | 'table' | 'other';
+  originalTexts: LanguageText[];
+  bbox: [number, number, number, number];
+  pageNumber: number;
+  order: number;
+  _blockIndices?: number[]; // Temporary field for processing
+  _confidence?: number; // AI confidence score
+}
+
 export interface ContentReductionResult {
-  groups: TextGroup[];
+  groups: ContentReductionGroup[];
   languagesDetected: string[];
   totalGroups: number;
   processedAt: Date;
-  metadata: {
-    groupingMethod: string;
-    aiModel: string;
-    processingTime: number;
-  };
+  aiLogs: AILogEntry[];
+}
+
+export interface AILogEntry {
+  timestamp: Date;
+  phase: string;
+  prompt?: string;
+  response?: string;
+  error?: string;
+  model?: string;
+  fallback?: string;
 }
 
 // Markdown chunks for content

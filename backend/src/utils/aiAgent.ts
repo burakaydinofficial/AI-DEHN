@@ -29,6 +29,49 @@ export class AIAgent {
   }
 
   /**
+   * Generate content with specific generation configuration
+   */
+  async generateContent(prompt: string, config?: {
+    model?: string;
+    temperature?: number;
+    maxOutputTokens?: number;
+  }): Promise<{ text: string }> {
+    try {
+      // Create temporary model with custom config if provided
+      let modelToUse = this.model;
+      if (config?.model && config.model !== this.config.model) {
+        modelToUse = this.genAI.getGenerativeModel({ 
+          model: config.model,
+          generationConfig: {
+            temperature: config.temperature ?? this.config.temperature,
+            maxOutputTokens: config.maxOutputTokens ?? this.config.maxOutputTokens,
+            topP: this.config.topP,
+            topK: this.config.topK,
+          }
+        });
+      } else if (config?.temperature !== undefined || config?.maxOutputTokens !== undefined) {
+        modelToUse = this.genAI.getGenerativeModel({ 
+          model: this.config.model,
+          generationConfig: {
+            temperature: config.temperature ?? this.config.temperature,
+            maxOutputTokens: config.maxOutputTokens ?? this.config.maxOutputTokens,
+            topP: this.config.topP,
+            topK: this.config.topK,
+          }
+        });
+      }
+      
+      const result = await modelToUse.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      return { text };
+    } catch (error) {
+      throw new Error(`AI content generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
    * Generate a response to a single prompt
    */
   async generateResponse(prompt: string, context?: string): Promise<AIResponse> {

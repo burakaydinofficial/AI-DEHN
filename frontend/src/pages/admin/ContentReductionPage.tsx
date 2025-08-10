@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import './AdminPages.css';
+import type { AILogEntry } from '../../types/api';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
@@ -62,16 +63,6 @@ interface DetailedReductionResult {
     languageDistribution: Record<string, number>;
     typeDistribution: Record<string, number>;
   };
-}
-
-interface AILogEntry {
-  timestamp: string;
-  operation: string;
-  model: string;
-  tokensUsed: number;
-  processingTime: number;
-  input: string;
-  output: string;
 }
 
 export const ContentReductionPage: React.FC = () => {
@@ -546,23 +537,37 @@ Chunks generated: ${result.chunksGenerated}`);
                 {aiLogs.map((log, index) => (
                   <div key={index} className="ai-log-entry">
                     <div className="log-header">
-                      <span className="log-operation">{log.operation}</span>
-                      <span className="log-model">{log.model}</span>
-                      <span className="log-tokens">{log.tokensUsed} tokens</span>
-                      <span className="log-time">{log.processingTime}ms</span>
+                      <span className="log-operation">{log.phase}</span>
+                      <span className="log-model">{log.model || 'Unknown'}</span>
                       <span className="log-timestamp">
                         {new Date(log.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
                     <div className="log-content">
-                      <div className="log-input">
-                        <h5>Input:</h5>
-                        <pre>{log.input.substring(0, 500)}{log.input.length > 500 && '...'}</pre>
-                      </div>
-                      <div className="log-output">
-                        <h5>Output:</h5>
-                        <pre>{log.output.substring(0, 500)}{log.output.length > 500 && '...'}</pre>
-                      </div>
+                      {log.prompt && (
+                        <div className="log-input">
+                          <h5>Prompt:</h5>
+                          <pre>{log.prompt.substring(0, 500)}{log.prompt.length > 500 && '...'}</pre>
+                        </div>
+                      )}
+                      {log.response && (
+                        <div className="log-output">
+                          <h5>Response:</h5>
+                          <pre>{log.response.substring(0, 500)}{log.response.length > 500 && '...'}</pre>
+                        </div>
+                      )}
+                      {log.error && (
+                        <div className="log-error">
+                          <h5>Error:</h5>
+                          <pre>{log.error}</pre>
+                        </div>
+                      )}
+                      {log.fallback && (
+                        <div className="log-fallback">
+                          <h5>Fallback Used:</h5>
+                          <pre>{log.fallback}</pre>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
