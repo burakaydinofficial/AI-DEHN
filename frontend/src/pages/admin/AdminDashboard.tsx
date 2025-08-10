@@ -8,7 +8,7 @@ import { PublishingPage } from './PublishingPage';
 import { InventoryPage } from './InventoryPage';
 import { StatusOverviewPage } from './StatusOverviewPage';
 import { ADMIN_TABS, AdminTabType } from '../../constants/adminTabs';
-import '../../admin.css';
+import './AdminPages.css';
 
 export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTabType>(ADMIN_TABS.upload);

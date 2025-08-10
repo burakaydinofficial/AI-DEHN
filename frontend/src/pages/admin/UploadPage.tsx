@@ -8,6 +8,7 @@ import {
   X
 } from 'lucide-react';
 import axios from 'axios';
+import './AdminPages.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
@@ -210,13 +211,13 @@ export const UploadPage: React.FC = () => {
     switch (status) {
       case 'uploading':
       case 'processing':
-        return <RefreshCw className="w-5 h-5 text-blue-500 animate-spin" />;
+        return <RefreshCw className="admin-upload-status-icon admin-loading-spinner" />;
       case 'success':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
+        return <CheckCircle className="admin-upload-status-icon success" />;
       case 'error':
-        return <AlertCircle className="w-5 h-5 text-red-500" />;
+        return <AlertCircle className="admin-upload-status-icon error" />;
       default:
-        return <FileText className="w-5 h-5 text-gray-500" />;
+        return <FileText className="admin-upload-status-icon default" />;
     }
   };
 
@@ -236,42 +237,38 @@ export const UploadPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="admin-page">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Upload className="w-6 h-6 text-blue-600" />
-        <h1 className="text-2xl font-bold text-gray-900">PDF Document Upload</h1>
+      <div className="admin-page-header">
+        <div className="admin-page-title">
+          <Upload className="admin-page-icon" />
+          <h1>PDF Document Upload</h1>
+        </div>
       </div>
 
       {/* Upload Section */}
-      <div className="bg-white rounded-lg border p-6">
-        <p className="text-gray-600 mb-6">
+      <div className="admin-upload-section">
+        <p className="admin-upload-description">
           Upload PDF documents to extract content, images, and layout information. 
           The system will convert PDFs to structured data for multilingual processing.
         </p>
 
         {/* Upload Drop Zone */}
         <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
-            dragActive 
-              ? 'border-blue-500 bg-blue-50' 
-              : isProcessingClick
-              ? 'border-gray-400 bg-gray-50 opacity-75'
-              : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
-          } ${isProcessingClick ? 'pointer-events-none' : ''}`}
+          className={`admin-upload-dropzone ${
+            dragActive ? 'active' : ''
+          } ${isProcessingClick ? 'processing' : ''}`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
           onClick={handleDropZoneClick}
         >
-          <Upload className={`w-12 h-12 mx-auto mb-4 ${
-            dragActive ? 'text-blue-500' : 'text-gray-400'
-          }`} />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <Upload className={`admin-upload-icon ${dragActive ? 'active' : ''}`} />
+          <h3 className="admin-upload-title">
             Drop PDF files here or click to browse
           </h3>
-          <p className="text-gray-600">
+          <p className="admin-upload-subtitle">
             Only PDF files are supported. Maximum file size: 100MB
           </p>
           <input
@@ -281,33 +278,33 @@ export const UploadPage: React.FC = () => {
             accept="application/pdf"
             onChange={handleFileSelect}
             onClick={(e) => e.stopPropagation()}
-            className="hidden"
+            className="admin-upload-input"
           />
         </div>
       </div>
 
       {/* Upload Progress */}
       {uploads.length > 0 && (
-        <div className="bg-white rounded-lg border overflow-hidden">
-          <div className="p-4 border-b bg-gray-50">
-            <h3 className="text-lg font-medium text-gray-900">Upload Progress</h3>
+        <div className="admin-upload-progress-section">
+          <div className="admin-section-header">
+            <h3>Upload Progress</h3>
           </div>
-          <div className="p-4">
-            <div className="space-y-3">
+          <div className="admin-upload-progress-content">
+            <div className="admin-upload-items">
               {uploads.map((upload, index) => (
-                <div key={`${upload.filename}-${index}`} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div key={`${upload.filename}-${index}`} className="admin-upload-item">
                   {getStatusIcon(upload.status)}
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 truncate">
+                  <div className="admin-upload-item-details">
+                    <h4 className="admin-upload-item-name">
                       {upload.filename}
                     </h4>
-                    <p className="text-sm text-gray-600">
+                    <p className="admin-upload-item-status">
                       {getStatusMessage(upload)}
                     </p>
                     {upload.status === 'uploading' && (
-                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                      <div className="admin-upload-progress-bar">
                         <div 
-                          className="bg-blue-500 h-2 rounded-full transition-all"
+                          className="admin-upload-progress-fill"
                           style={{ width: `${upload.progress}%` }}
                         />
                       </div>
@@ -315,9 +312,9 @@ export const UploadPage: React.FC = () => {
                   </div>
                   <button
                     onClick={() => removeUpload(upload.filename)}
-                    className="p-1 text-gray-400 hover:text-red-500"
+                    className="admin-upload-remove-btn"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="admin-upload-remove-icon" />
                   </button>
                 </div>
               ))}
@@ -327,31 +324,31 @@ export const UploadPage: React.FC = () => {
       )}
 
       {/* Processing Instructions */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-blue-900 mb-3">
+      <div className="admin-info-section">
+        <h3 className="admin-info-title">
           Processing Pipeline
         </h3>
-        <div className="text-blue-800 space-y-2">
-          <div className="flex items-start gap-2">
-            <span className="font-semibold">1.</span>
+        <div className="admin-info-content">
+          <div className="admin-info-step">
+            <span className="admin-info-step-number">1.</span>
             <div>
               <strong>PDF Upload:</strong> Original PDF is stored and queued for processing
             </div>
           </div>
-          <div className="flex items-start gap-2">
-            <span className="font-semibold">2.</span>
+          <div className="admin-info-step">
+            <span className="admin-info-step-number">2.</span>
             <div>
               <strong>Content Extraction:</strong> PDF is converted to ZIP with extracted text, images, and layout data
             </div>
           </div>
-          <div className="flex items-start gap-2">
-            <span className="font-semibold">3.</span>
+          <div className="admin-info-step">
+            <span className="admin-info-step-number">3.</span>
             <div>
               <strong>Structure Analysis:</strong> Content is analyzed for layout, fonts, and positioning
             </div>
           </div>
-          <div className="flex items-start gap-2">
-            <span className="font-semibold">4.</span>
+          <div className="admin-info-step">
+            <span className="admin-info-step-number">4.</span>
             <div>
               <strong>Ready for Reduction:</strong> Once processed, document is ready for content grouping and language detection
             </div>
