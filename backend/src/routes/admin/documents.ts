@@ -19,7 +19,9 @@ import {
   ContentReductionRequest,
   ContentReductionResult,
   TextGroup,
-  LanguageText
+  LanguageText,
+  ChunksResult,
+  MarkdownChunk
 } from '../../types/api';
 
 export const documentsRouter = Router();
@@ -361,69 +363,82 @@ documentsRouter.post('/:id/generate-translation', async (req: Request, res: Resp
 });
 
 // Content Reduction - AI-powered text grouping and language detection
-documentsRouter.post('/:id/reduce', async (req: Request<{ id: string }, ApiResponse<ContentReductionResult>, ContentReductionRequest>, res: Response<ApiResponse<ContentReductionResult>>, next: NextFunction) => {
+// This step detects components repeated in different languages and creates grouped JSON
+documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id: documentId } = req.params;
-    const {
-      aiModel = 'gemini-1.5-pro',
-      groupingStrategy = 'mixed',
-      languageDetectionThreshold = 0.7
-    } = req.body;
-
-    const context = getAppContext();
-    const { storage, database } = context;
+    const db = getDb();
+    const storage = getStorage();
 
     // Get document from database
-    const document = await database.collection('documents').findOne({ id: documentId });
+    const document = await db.collection('documents').findOne({ id: documentId });
     if (!document) {
       return res.status(404).json({
         success: false,
         error: 'Document not found',
         timestamp: new Date()
-      });
+      } as ApiResponse);
     }
 
     // Check if document has been processed (PDF → ZIP extraction complete)
-    if (!document.storage?.analysisJson) {
+    if (document.status !== 'processed' || !document.storage?.analysisJson) {
       return res.status(400).json({
         success: false,
         error: 'Document must be processed first. PDF analysis data not found.',
         timestamp: new Date()
-      });
+      } as ApiResponse);
     }
 
-    // Load the analysis JSON containing extracted PDF content
-    const analysisPath = path.join(process.cwd(), 'storage', 'private', document.storage.analysisJson);
-    const analysisData = JSON.parse(await fs.readFile(analysisPath, 'utf8'));
+    // Update document status to show reduction is starting
+    await db.collection('documents').updateOne(
+      { id: documentId },
+      { $set: { status: 'reducing', processingStage: 'content-reduction' } }
+    );
 
-    // Perform content reduction using AI
-    const aiAgent = context.aiAgent;
-    const reductionResult = await performContentReduction(
+    // Load the analysis JSON containing extracted PDF content
+    const analysisBuffer = await storage.downloadPrivate(document.storage.analysisKey);
+    const analysisData = JSON.parse(analysisBuffer.toString('utf8'));
+
+    // Perform content reduction using our standard AI processor
+    const aiAgent = getAppContext().aiAgent;
+    const reductionResult = await performStandardContentReduction(
       analysisData,
       aiAgent,
-      groupingStrategy,
-      languageDetectionThreshold,
-      aiModel
+      documentId
     );
 
     // Save content reduction results to storage
-    const reducedFilename = `${documentId}-content-reduction.json`;
-    const reducedPath = await storage.uploadPrivate({
-      key: `documents/${documentId}/reduced/${reducedFilename}`,
+    const reducedKey = `documents/${documentId}/reduced/${documentId}_content_groups.json`;
+    await storage.uploadPrivate({
+      key: reducedKey,
       contentType: 'application/json',
       body: Buffer.from(JSON.stringify(reductionResult, null, 2))
     });
 
-    // Update document in database
-    const updateResult = await database.collection('documents').updateOne(
+    // Generate markdown chunks for all languages found
+    const chunksResult = await generateMarkdownChunks(analysisData, reductionResult, aiAgent);
+    const chunksKey = `documents/${documentId}/reduced/${documentId}_markdown_chunks.json`;
+    await storage.uploadPrivate({
+      key: chunksKey,
+      contentType: 'application/json',
+      body: Buffer.from(JSON.stringify(chunksResult, null, 2))
+    });
+
+    // Update document in database with results
+    await db.collection('documents').updateOne(
       { id: documentId },
       {
         $set: {
           status: 'reduced',
-          processingStage: 'reduction',
-          contentReduction: reductionResult,
-          'storage.reducedJson': reducedFilename,
-          'storage.reducedKey': reducedPath,
+          processingStage: 'content-reduction-complete',
+          contentReduction: {
+            totalGroups: reductionResult.totalGroups,
+            languagesDetected: reductionResult.languagesDetected,
+            processedAt: new Date(),
+            processingLogs: reductionResult.aiLogs // Store AI dialog logs
+          },
+          'storage.reducedJson': reducedKey,
+          'storage.chunksJson': chunksKey,
           'stats.languagesDetected': reductionResult.languagesDetected.length,
           'stats.textGroupsCount': reductionResult.totalGroups,
           availableLanguages: reductionResult.languagesDetected,
@@ -432,24 +447,72 @@ documentsRouter.post('/:id/reduce', async (req: Request<{ id: string }, ApiRespo
       }
     );
 
-    if (updateResult.matchedCount === 0) {
+    return res.json({
+      success: true,
+      data: {
+        totalGroups: reductionResult.totalGroups,
+        languagesDetected: reductionResult.languagesDetected,
+        processedAt: new Date(),
+        hasAiLogs: reductionResult.aiLogs && reductionResult.aiLogs.length > 0
+      },
+      message: 'Content reduction completed successfully',
+      timestamp: new Date()
+    } as ApiResponse);
+
+  } catch (error) {
+    // Update document status to failed on error
+    try {
+      const db = getDb();
+      await db.collection('documents').updateOne(
+        { id: req.params.id },
+        { 
+          $set: { 
+            status: 'failed', 
+            error: error instanceof Error ? error.message : 'Content reduction failed',
+            processedAt: new Date() 
+          } 
+        }
+      );
+    } catch {}
+    return next(error);
+  }
+});
+
+// Get AI processing logs for a document (on-demand loading)
+documentsRouter.get('/:id/ai-logs', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id: documentId } = req.params;
+    const db = getDb();
+    const storage = getStorage();
+
+    const document = await db.collection('documents').findOne({ id: documentId });
+    if (!document) {
       return res.status(404).json({
         success: false,
-        error: 'Failed to update document',
+        error: 'Document not found',
         timestamp: new Date()
-      });
+      } as ApiResponse);
+    }
+
+    // Load AI logs from storage if they exist
+    let aiLogs = [];
+    if (document.storage?.aiLogsKey) {
+      try {
+        const logsBuffer = await storage.downloadPrivate(document.storage.aiLogsKey);
+        aiLogs = JSON.parse(logsBuffer.toString('utf8'));
+      } catch (error) {
+        console.warn('Could not load AI logs:', error);
+      }
     }
 
     return res.json({
       success: true,
-      data: reductionResult,
-      message: 'Content reduction completed successfully',
+      data: { aiLogs },
       timestamp: new Date()
-    });
+    } as ApiResponse);
 
   } catch (error) {
-    next(error);
-    return;
+    return next(error);
   }
 });
 
@@ -729,4 +792,230 @@ function calculateOverallBbox(blocks: any[]): [number, number, number, number] {
   }
   
   return [minX, minY, maxX, maxY];
+}
+
+// Our standard content reduction processor - tuned for multilingual PDFs
+async function performStandardContentReduction(
+  analysisData: any,
+  aiAgent: any,
+  documentId: string
+): Promise<{
+  groups: TextGroup[];
+  languagesDetected: string[];
+  totalGroups: number;
+  processedAt: Date;
+  aiLogs: any[];
+}> {
+  const startTime = Date.now();
+  const aiLogs: any[] = [];
+
+  // Extract text blocks from PDF analysis data
+  const textBlocks = extractTextBlocks(analysisData);
+  
+  // Use our standard grouping algorithm - no user configuration needed
+  const groups = await performStandardGrouping(textBlocks, aiAgent, aiLogs);
+  
+  // Detect languages in each group with high accuracy
+  const groupsWithLanguages = await detectLanguagesInGroups(groups, aiAgent, 0.8, 'gemini-1.5-pro', textBlocks);
+  
+  // Get unique languages detected
+  const languagesDetected = [...new Set(
+    groupsWithLanguages.flatMap(group => 
+      group.originalTexts.map(text => text.language)
+    )
+  )].filter(lang => lang !== 'unknown');
+
+  return {
+    groups: groupsWithLanguages,
+    languagesDetected,
+    totalGroups: groupsWithLanguages.length,
+    processedAt: new Date(),
+    aiLogs
+  };
+}
+
+// Standard grouping algorithm optimized for our use case
+async function performStandardGrouping(
+  textBlocks: any[],
+  aiAgent: any,
+  aiLogs: any[]
+): Promise<TextGroup[]> {
+  
+  const prompt = `
+You are analyzing text blocks extracted from a multilingual PDF document. Your task is to intelligently group text blocks that represent the same content across different languages or related content within the same language.
+
+CRITICAL GROUPING RULES:
+1. For TITLES/HEADERS: Group text blocks that appear to be the same title in different languages
+2. For PARAGRAPHS: Group text blocks that contain the same paragraph content in different languages
+3. For LISTS: Group list items that represent the same content across languages
+4. Consider LAYOUT POSITION: Blocks in similar positions likely contain equivalent content
+5. Consider TEXT LENGTH: Similar-length blocks in similar positions often represent the same content
+
+Text blocks to analyze:
+${textBlocks.slice(0, 30).map((block, idx) => 
+  `Block ${idx}: Page ${block.pageNumber}, Position [${block.bbox?.join(',')}], Length: ${block.text.length}, Text: "${block.text.substring(0, 150)}..."`
+).join('\n')}
+
+Return a JSON array of groups where each group represents content that should be grouped together:
+{
+  "groups": [
+    {
+      "id": "uuid-string",
+      "type": "title|paragraph|list|table|other",
+      "blockIndices": [0, 5, 12],
+      "confidence": 0.95,
+      "reasoning": "Brief explanation of why these blocks are grouped"
+    }
+  ]
+}
+
+Focus on quality over quantity - only group blocks that clearly represent the same content.
+`;
+
+  try {
+    const response = await aiAgent.generateContent(prompt, {
+      model: 'gemini-1.5-pro', // Use our configured model
+      temperature: 0.2, // Low temperature for consistent results
+      maxOutputTokens: 4000
+    });
+
+    // Log the AI interaction for debugging
+    aiLogs.push({
+      timestamp: new Date(),
+      phase: 'text-grouping',
+      prompt: prompt.substring(0, 500) + '...',
+      response: response.text.substring(0, 1000) + '...',
+      model: 'gemini-1.5-pro'
+    });
+
+    const result = JSON.parse(response.text);
+    const groupsData = result.groups || [];
+    
+    return groupsData.map((group: any, idx: number) => ({
+      id: group.id || uuidv4(),
+      type: group.type || 'other',
+      originalTexts: [], // Will be populated with language detection
+      bbox: calculateOverallBbox(group.blockIndices?.map((i: number) => textBlocks[i]) || []),
+      pageNumber: textBlocks[group.blockIndices?.[0] || 0]?.pageNumber || 1,
+      order: idx,
+      _blockIndices: group.blockIndices || [],
+      _confidence: group.confidence || 0.5
+    }));
+    
+  } catch (error) {
+    console.error('AI grouping failed, using fallback:', error);
+    aiLogs.push({
+      timestamp: new Date(),
+      phase: 'text-grouping-error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      fallback: 'simple-position-based'
+    });
+    
+    // Fallback: simple position-based grouping
+    return textBlocks.map((block, idx) => ({
+      id: uuidv4(),
+      type: 'paragraph' as const,
+      originalTexts: [],
+      bbox: block.bbox,
+      pageNumber: block.pageNumber,
+      order: idx,
+      _blockIndices: [idx],
+      _confidence: 0.3
+    }));
+  }
+}
+
+// Generate markdown chunks with metadata as per business requirements
+async function generateMarkdownChunks(
+  analysisData: any,
+  reductionResult: any,
+  aiAgent: any
+): Promise<ChunksResult> {
+  const startTime = Date.now();
+  const chunks: MarkdownChunk[] = [];
+  
+  // Group by language and page for chunk generation
+  const languagePages = new Map<string, Set<number>>();
+  
+  for (const group of reductionResult.groups) {
+    for (const text of group.originalTexts) {
+      if (!languagePages.has(text.language)) {
+        languagePages.set(text.language, new Set());
+      }
+      languagePages.get(text.language)!.add(group.pageNumber);
+    }
+  }
+
+  // Generate chunks for each language-page combination
+  for (const [language, pages] of languagePages) {
+    for (const pageNum of pages) {
+      const pageGroups = reductionResult.groups.filter((g: any) => 
+        g.pageNumber === pageNum && 
+        g.originalTexts.some((t: any) => t.language === language)
+      );
+
+      if (pageGroups.length > 0) {
+        const markdownContent = await generatePageMarkdown(pageGroups, language, pageNum, aiAgent);
+        
+        chunks.push({
+          id: uuidv4(),
+          content: markdownContent,
+          sourceGroups: pageGroups.map((g: any) => g.id),
+          language,
+          pageNumbers: [pageNum],
+          metadata: {
+            chunkType: 'page',
+            layoutReference: language,
+            mergedPages: undefined,
+            childChunks: undefined
+          }
+        });
+      }
+    }
+  }
+
+  return {
+    chunks,
+    totalChunks: chunks.length,
+    languages: Array.from(languagePages.keys()),
+    processedAt: new Date(),
+    metadata: {
+      chunkingStrategy: 'page-based-with-language-separation',
+      aiModel: 'gemini-1.5-pro',
+      processingTime: Date.now() - startTime
+    }
+  };
+}
+
+// Generate markdown for a page with proper structure
+async function generatePageMarkdown(
+  pageGroups: any[],
+  language: string,
+  pageNumber: number,
+  aiAgent: any
+): Promise<string> {
+  // Sort groups by order and position
+  const sortedGroups = pageGroups.sort((a, b) => a.order - b.order);
+  
+  let markdown = `# Page ${pageNumber} (${language.toUpperCase()})\n\n`;
+  
+  for (const group of sortedGroups) {
+    const text = group.originalTexts.find((t: any) => t.language === language);
+    if (text) {
+      switch (group.type) {
+        case 'title':
+          markdown += `## ${text.text}\n\n`;
+          break;
+        case 'list':
+          markdown += `- ${text.text}\n`;
+          break;
+        case 'paragraph':
+        default:
+          markdown += `${text.text}\n\n`;
+          break;
+      }
+    }
+  }
+  
+  return markdown;
 }
