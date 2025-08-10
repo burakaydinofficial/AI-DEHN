@@ -105,6 +105,76 @@ export interface PDFPageContent {
   text_blocks: TextBlock[];
 }
 
+export interface PDFContent {
+  full_text: string;
+  pages: PDFPageContent[];
+  total_chars: number;
+  images_count: number;
+}
+
+export interface PDFLayoutInfo {
+  has_positioning_data: boolean;
+  coordinate_system: string;
+  bbox_format: string;
+  font_flags_decoded: boolean;
+  color_format: string;
+}
+
+export interface PDFImageInfo {
+  image_index: number;
+  width: number;
+  height: number;
+  colorspace: string;
+  bpc: number; // Bits per component
+  ext: string; // File extension
+  filename: string;
+}
+
+export interface PDFAnalysisData {
+  success: boolean;
+  metadata: PDFMetadata;
+  content: PDFContent;
+  images: PDFImageInfo[];
+  layout_info: PDFLayoutInfo;
+  error?: string;
+}
+
+export interface ProcessedTextBlock {
+  text: string;
+  bbox: [number, number, number, number];
+  pageNumber: number;
+  lines: TextLine[];
+}
+
+export interface ContentReductionGroup {
+  id: string;
+  type: 'title' | 'paragraph' | 'list' | 'table' | 'other';
+  originalTexts: LanguageText[];
+  bbox: [number, number, number, number];
+  pageNumber: number;
+  order: number;
+  _blockIndices?: number[]; // Temporary field for processing
+  _confidence?: number; // AI confidence score
+}
+
+export interface ContentReductionResult {
+  groups: ContentReductionGroup[];
+  languagesDetected: string[];
+  totalGroups: number;
+  processedAt: Date;
+  aiLogs: AILogEntry[];
+}
+
+export interface AILogEntry {
+  timestamp: Date;
+  phase: string;
+  prompt?: string;
+  response?: string;
+  error?: string;
+  model?: string;
+  fallback?: string;
+}
+
 export interface PDFImageInfo {
   page_number: number;
   image_index: number;
@@ -181,18 +251,6 @@ export interface LanguageText {
   bbox: [number, number, number, number];
   confidence: number; // Language detection confidence
   isOriginal: boolean; // true for extracted, false for generated
-}
-
-export interface ContentReductionResult {
-  groups: TextGroup[];
-  languagesDetected: string[];
-  totalGroups: number;
-  processedAt: Date;
-  metadata: {
-    groupingMethod: string;
-    aiModel: string;
-    processingTime: number;
-  };
 }
 
 // Markdown chunks for content

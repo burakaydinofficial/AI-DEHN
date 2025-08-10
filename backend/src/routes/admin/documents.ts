@@ -21,7 +21,11 @@ import {
   TextGroup,
   LanguageText,
   ChunksResult,
-  MarkdownChunk
+  MarkdownChunk,
+  PDFAnalysisData,
+  ProcessedTextBlock,
+  ContentReductionGroup,
+  AILogEntry
 } from '../../types/api';
 
 export const documentsRouter = Router();
@@ -554,15 +558,16 @@ documentsRouter.post('/:id/publish', async (req: Request, res: Response, next: N
   } catch (error) { return next(error); }
 });
 
-// Helper function to perform AI-powered content reduction
+// Helper function to perform AI-powered content reduction (legacy - kept for compatibility)
 async function performContentReduction(
-  analysisData: any,
+  analysisData: PDFAnalysisData,
   aiAgent: any,
   groupingStrategy: 'layout-based' | 'semantic' | 'mixed',
   languageThreshold: number,
   model: string
 ): Promise<ContentReductionResult> {
   const startTime = Date.now();
+  const aiLogs: AILogEntry[] = [];
 
   // Extract text blocks from PDF analysis data
   const textBlocks = extractTextBlocks(analysisData);
@@ -587,17 +592,13 @@ async function performContentReduction(
     languagesDetected,
     totalGroups: groupsWithLanguages.length,
     processedAt: new Date(),
-    metadata: {
-      groupingMethod: groupingStrategy,
-      aiModel: model,
-      processingTime
-    }
+    aiLogs
   };
 }
 
 // Extract text blocks from PDF analysis data
-function extractTextBlocks(analysisData: any): any[] {
-  const blocks = [];
+function extractTextBlocks(analysisData: PDFAnalysisData): ProcessedTextBlock[] {
+  const blocks: ProcessedTextBlock[] = [];
   
   if (analysisData.content?.pages) {
     for (const page of analysisData.content.pages) {
@@ -606,8 +607,8 @@ function extractTextBlocks(analysisData: any): any[] {
           if (block.block_type === 'text' && block.lines?.length > 0) {
             // Extract text from spans within lines
             const blockText = block.lines
-              .flatMap((line: any) => line.spans || [])
-              .map((span: any) => span.text || '')
+              .flatMap((line) => line.spans || [])
+              .map((span) => span.text || '')
               .join(' ')
               .trim();
             
@@ -630,11 +631,11 @@ function extractTextBlocks(analysisData: any): any[] {
 
 // Group text blocks using AI analysis
 async function groupTextBlocks(
-  textBlocks: any[],
+  textBlocks: ProcessedTextBlock[],
   aiAgent: any,
   strategy: string,
   model: string
-): Promise<TextGroup[]> {
+): Promise<ContentReductionGroup[]> {
   const prompt = `
 You are analyzing text blocks extracted from a multilingual PDF document. Your task is to group related text blocks that represent the same content across different languages.
 
@@ -698,13 +699,13 @@ Return only the JSON array, no other text.
 
 // Detect languages in grouped text blocks
 async function detectLanguagesInGroups(
-  groups: any[],
+  groups: ContentReductionGroup[],
   aiAgent: any,
   threshold: number,
   model: string,
-  allBlocks: any[]
-): Promise<TextGroup[]> {
-  const processedGroups: TextGroup[] = [];
+  allBlocks: ProcessedTextBlock[]
+): Promise<ContentReductionGroup[]> {
+  const processedGroups: ContentReductionGroup[] = [];
 
   for (const group of groups) {
     const blockIndices = group._blockIndices || [];
@@ -777,7 +778,7 @@ Return only the language code (e.g., "en", "tr", "de", "fr", "es", etc.). If unc
 }
 
 // Calculate overall bounding box from multiple blocks
-function calculateOverallBbox(blocks: any[]): [number, number, number, number] {
+function calculateOverallBbox(blocks: ProcessedTextBlock[]): [number, number, number, number] {
   if (blocks.length === 0) return [0, 0, 0, 0];
   
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -796,18 +797,12 @@ function calculateOverallBbox(blocks: any[]): [number, number, number, number] {
 
 // Our standard content reduction processor - tuned for multilingual PDFs
 async function performStandardContentReduction(
-  analysisData: any,
-  aiAgent: any,
+  analysisData: PDFAnalysisData,
+  aiAgent: any, // TODO: Add proper AIAgent type
   documentId: string
-): Promise<{
-  groups: TextGroup[];
-  languagesDetected: string[];
-  totalGroups: number;
-  processedAt: Date;
-  aiLogs: any[];
-}> {
+): Promise<ContentReductionResult> {
   const startTime = Date.now();
-  const aiLogs: any[] = [];
+  const aiLogs: AILogEntry[] = [];
 
   // Extract text blocks from PDF analysis data
   const textBlocks = extractTextBlocks(analysisData);
@@ -836,10 +831,10 @@ async function performStandardContentReduction(
 
 // Standard grouping algorithm optimized for our use case
 async function performStandardGrouping(
-  textBlocks: any[],
+  textBlocks: ProcessedTextBlock[],
   aiAgent: any,
-  aiLogs: any[]
-): Promise<TextGroup[]> {
+  aiLogs: AILogEntry[]
+): Promise<ContentReductionGroup[]> {
   
   const prompt = `
 You are analyzing text blocks extracted from a multilingual PDF document. Your task is to intelligently group text blocks that represent the same content across different languages or related content within the same language.
@@ -927,8 +922,8 @@ Focus on quality over quantity - only group blocks that clearly represent the sa
 
 // Generate markdown chunks with metadata as per business requirements
 async function generateMarkdownChunks(
-  analysisData: any,
-  reductionResult: any,
+  analysisData: PDFAnalysisData,
+  reductionResult: ContentReductionResult,
   aiAgent: any
 ): Promise<ChunksResult> {
   const startTime = Date.now();
@@ -949,9 +944,9 @@ async function generateMarkdownChunks(
   // Generate chunks for each language-page combination
   for (const [language, pages] of languagePages) {
     for (const pageNum of pages) {
-      const pageGroups = reductionResult.groups.filter((g: any) => 
+      const pageGroups = reductionResult.groups.filter((g) => 
         g.pageNumber === pageNum && 
-        g.originalTexts.some((t: any) => t.language === language)
+        g.originalTexts.some((t) => t.language === language)
       );
 
       if (pageGroups.length > 0) {
@@ -960,7 +955,7 @@ async function generateMarkdownChunks(
         chunks.push({
           id: uuidv4(),
           content: markdownContent,
-          sourceGroups: pageGroups.map((g: any) => g.id),
+          sourceGroups: pageGroups.map((g) => g.id),
           language,
           pageNumbers: [pageNum],
           metadata: {
@@ -989,7 +984,7 @@ async function generateMarkdownChunks(
 
 // Generate markdown for a page with proper structure
 async function generatePageMarkdown(
-  pageGroups: any[],
+  pageGroups: ContentReductionGroup[],
   language: string,
   pageNumber: number,
   aiAgent: any
@@ -1000,7 +995,7 @@ async function generatePageMarkdown(
   let markdown = `# Page ${pageNumber} (${language.toUpperCase()})\n\n`;
   
   for (const group of sortedGroups) {
-    const text = group.originalTexts.find((t: any) => t.language === language);
+    const text = group.originalTexts.find((t) => t.language === language);
     if (text) {
       switch (group.type) {
         case 'title':
