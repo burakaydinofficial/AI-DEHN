@@ -765,7 +765,7 @@ export const PublishingPage: React.FC = () => {
                   value={`${linkFormData.documentId}-${linkFormData.language}`}
                   onChange={(e) => {
                     const [docId, lang] = e.target.value.split('-');
-                    setLinkFormData({...linkFormData, documentId: docId, language: lang});
+                    setLinkFormData({...linkFormData, documentId: docId || '', language: lang || ''});
                   }}
                   required
                   className="form-select"

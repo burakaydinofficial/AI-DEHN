@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import { FileText, Settings } from 'lucide-react'
+import { Settings } from 'lucide-react'
 import './App.css'
-import { DocumentsList } from './pages/DocumentsList'
-import { DocumentDetail } from './pages/DocumentDetail'
 import { AdminDashboard } from './pages/admin/AdminDashboard'
 
 // Navigation component to access location
