@@ -8,6 +8,7 @@ import {
   FileText
 } from 'lucide-react';
 import axios from 'axios';
+import './AdminPages.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
@@ -90,35 +91,41 @@ export const ContentReductionPage: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case 'processed':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'ready';
       case 'reduced':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'success';
       case 'failed':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'error';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'default';
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-600">Loading documents...</span>
+      <div className="admin-loading">
+        <div className="admin-loading-content">
+          <RefreshCw className="admin-loading-spinner" />
+          <span>Loading documents...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg border p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          Content Reduction
-        </h2>
-        <p className="text-gray-600 mb-6">
+    <div className="admin-page">
+      {/* Header and Configuration */}
+      <div className="admin-section">
+        <div className="admin-page-header">
+          <div className="admin-page-title">
+            <GitBranch className="admin-page-icon" />
+            <h1>Content Reduction</h1>
+          </div>
+        </div>
+        <p className="admin-section-description">
           Use AI to detect and group repeated components across different languages. 
           This step identifies text groups, detects languages, and prepares content for translation.
         </p>
@@ -181,22 +188,22 @@ export const ContentReductionPage: React.FC = () => {
             <p className="text-gray-600">Upload and process PDF documents first to enable content reduction.</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="admin-document-list">
             {documents.map((doc) => (
-              <div key={doc.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-medium text-gray-900 truncate">
+              <div key={doc.id} className="admin-document-item">
+                <div className="admin-document-header">
+                  <div className="admin-document-info">
+                    <div className="admin-document-title-row">
+                      <h3 className="admin-document-name">
                         {doc.originalName}
                       </h3>
-                      <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(doc.status)}`}>
+                      <div className={`admin-status-badge ${getStatusBadgeClass(doc.status)}`}>
                         {doc.status === 'reduced' ? (
-                          <CheckCircle className="w-3 h-3" />
+                          <CheckCircle className="admin-status-icon" />
                         ) : (
-                          <FileText className="w-3 h-3" />
+                          <FileText className="admin-status-icon" />
                         )}
-                        <span className="capitalize">
+                        <span>
                           {doc.status === 'processed' ? 'Ready for Reduction' : doc.status}
                         </span>
                       </div>

@@ -9,6 +9,7 @@ import {
   Download
 } from 'lucide-react';
 import axios from 'axios';
+import './AdminPages.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
@@ -140,61 +141,67 @@ export const TranslationPage: React.FC = () => {
     }));
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case 'reduced':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'ready';
       case 'translated':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'success';
       case 'failed':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'error';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'default';
     }
   };
 
-  const getTranslationStatusColor = (status: string) => {
+  const getTranslationStatusClass = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'warning';
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'success';
       case 'failed':
-        return 'bg-red-100 text-red-800';
+        return 'error';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'default';
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-600">Loading documents...</span>
+      <div className="admin-loading">
+        <div className="admin-loading-content">
+          <RefreshCw className="admin-loading-spinner" />
+          <span>Loading documents...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg border p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          Translation Generation
-        </h2>
-        <p className="text-gray-600 mb-6">
+    <div className="admin-page">
+      {/* Header */}
+      <div className="admin-section">
+        <div className="admin-page-header">
+          <div className="admin-page-title">
+            <Languages className="admin-page-icon" />
+            <h1>Translation Generation</h1>
+          </div>
+        </div>
+        <p className="admin-section-description">
           Generate multilingual translations using AI. Convert text groups into target languages while 
           preserving context, formatting, and technical terminology.
         </p>
 
         {/* Translation Parameters */}
-        <div className="bg-gray-50 rounded-lg p-4 mb-6">
-          <h3 className="font-medium text-gray-900 mb-3">Translation Configuration</h3>
+        <div className="admin-form-section">
+          <h3 className="admin-form-section-title">Translation Configuration</h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="admin-form-grid translation-config">
             {/* AI Settings */}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="admin-translation-settings">
+              <div className="admin-form-group">
+                <label className="admin-form-label">
                   AI Model
                 </label>
                 <select

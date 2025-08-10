@@ -10,6 +10,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import axios from 'axios';
+import './AdminPages.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
@@ -178,57 +179,63 @@ export const PublishingPage: React.FC = () => {
     }));
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case 'translated':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'ready';
       case 'published':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'success';
       case 'failed':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'error';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'default';
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-600">Loading documents...</span>
+      <div className="admin-loading">
+        <div className="admin-loading-content">
+          <RefreshCw className="admin-loading-spinner" />
+          <span>Loading documents...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg border p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          Content Publishing
-        </h2>
-        <p className="text-gray-600 mb-6">
+    <div className="admin-page">
+      {/* Header */}
+      <div className="admin-section">
+        <div className="admin-page-header">
+          <div className="admin-page-title">
+            <Send className="admin-page-icon" />
+            <h1>Content Publishing</h1>
+          </div>
+        </div>
+        <p className="admin-section-description">
           Publish translated documents in various formats. Generate PDFs, web pages, or structured data 
           with multilingual content ready for distribution.
         </p>
 
         {documents.length === 0 ? (
-          <div className="text-center py-12">
-            <Send className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No documents ready</h3>
-            <p className="text-gray-600">Complete translation process first to enable publishing.</p>
+          <div className="admin-empty-state">
+            <Send className="admin-empty-icon" />
+            <h3 className="admin-empty-title">No documents ready</h3>
+            <p className="admin-empty-description">Complete translation process first to enable publishing.</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="admin-publishing-container">
             {/* Publishing Configuration */}
             {selectedDocument && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="font-medium text-blue-900 mb-4">Publishing Configuration</h3>
+              <div className="admin-publishing-config">
+                <h3 className="admin-publishing-config-title">Publishing Configuration</h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="admin-publishing-form">
                   {/* Left Column */}
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <div className="admin-publishing-settings">
+                    <div className="admin-form-group">
+                      <label className="admin-form-label">
                         Version Name
                       </label>
                       <input
@@ -236,12 +243,12 @@ export const PublishingPage: React.FC = () => {
                         value={publishParams.versionName}
                         onChange={(e) => setPublishParams(prev => ({ ...prev, versionName: e.target.value }))}
                         placeholder="e.g., v1.0, release-2024"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="admin-form-input"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <div className="admin-form-group">
+                      <label className="admin-form-label">
                         Output Format
                       </label>
                       <select

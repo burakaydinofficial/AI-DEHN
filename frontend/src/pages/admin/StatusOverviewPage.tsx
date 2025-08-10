@@ -12,6 +12,7 @@ import {
   Database
 } from 'lucide-react';
 import axios from 'axios';
+import './AdminPages.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
@@ -225,27 +226,25 @@ export const StatusOverviewPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-600">Loading system overview...</span>
+      <div className="admin-loading">
+        <div className="admin-loading-content">
+          <RefreshCw className="admin-loading-spinner" />
+          <span>Loading system overview...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="admin-page">
       {/* Header */}
-      <div className="bg-white rounded-lg border p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              System Status Overview
-            </h2>
-            <p className="text-gray-600">
-              Monitor document processing pipeline performance and system health.
-            </p>
+      <div className="admin-section">
+        <div className="admin-page-header">
+          <div className="admin-page-title">
+            <BarChart3 className="admin-page-icon" />
+            <h1>System Status Overview</h1>
           </div>
-          <div className="text-right">
+          <div className="admin-page-actions">
             <button
               onClick={() => fetchOverviewData()}
               className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
