@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { AIAgent } from '../utils/aiAgent';
+import { getAIAgent } from '../utils/aiManager';
 import { 
   AIChatRequest, 
   AIAnalyzeDocumentRequest, 
@@ -10,10 +10,8 @@ import {
 
 export const aiRouter = Router();
 
-// Initialize AI agent
-const aiAgent = new AIAgent({
-  apiKey: process.env.AI_API_KEY || process.env.GEMINI_API_KEY || 'mock-api-key'
-});
+// Get AI agent from centralized manager
+const aiAgent = getAIAgent();
 
 // Mock chat sessions storage
 const mockSessions: ChatSession[] = [];

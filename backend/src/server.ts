@@ -6,14 +6,13 @@ import dotenv from 'dotenv';
 import { MongoClient, Db } from 'mongodb';
 import { createStorageProvider } from './utils';
 import { setDb, setStorage, setConfig, setAIAgent } from './utils/context';
-import { AIAgent } from './utils/aiAgent';
+import { appConfig, logConfigSummary } from './config';
+import { getAIAgent } from './utils/aiManager';
 
-// Load environment variables
-dotenv.config();
-dotenv.config({ path: '.env.local' });
+// Log configuration summary for debugging
+logConfigSummary(appConfig);
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
 // MongoDB connection
 let db: Db;
@@ -57,14 +56,12 @@ app.get('/health', (req: Request, res: Response) => {
 // MongoDB connection setup
 async function connectToDatabase() {
   try {
-    const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/dehn';
-    console.log(`🔌 Connecting to MongoDB at ${mongoUri.replace(/\/\/.*@/, '//***:***@')}`);
+    console.log(`🔌 Connecting to MongoDB at ${appConfig.database.uri.replace(/\/\/.*@/, '//***:***@')}`);
     
-    client = new MongoClient(mongoUri);
+    client = new MongoClient(appConfig.database.uri);
     await client.connect();
     
-    const dbName = process.env.MONGO_DB_NAME || 'dehn';
-    db = client.db(dbName);
+    db = client.db(appConfig.database.name);
     
     // Test the connection
     await db.command({ ping: 1 });
@@ -92,21 +89,13 @@ async function connectToDatabase() {
     
     console.log('✅ Database indexes created');
     
-    // Initialize storage
-    const storageRoot = process.env.STORAGE_ROOT || '/app/storage';
-    const storage = createStorageProvider({ storageRoot });
+    // Initialize storage with centralized config
+    const storage = createStorageProvider({ storageRoot: appConfig.storage.root });
     await storage.ensureBuckets();
     console.log('✅ Local file storage initialized');
     
-    // Initialize AI agent
-    const aiApiKey = process.env.AI_API_KEY;
-    if (!aiApiKey) {
-      console.warn('⚠️  AI_API_KEY not found in environment variables. AI features will not work.');
-    }
-    const aiAgent = new AIAgent({
-      apiKey: aiApiKey || '',
-      model: process.env.AI_MODEL || 'gemini-1.5-pro'
-    });
+    // Initialize AI agent with centralized management
+    const aiAgent = getAIAgent();
     console.log('✅ AI Agent initialized');
     
     // Initialize context
@@ -114,9 +103,9 @@ async function connectToDatabase() {
     setStorage(storage);
     setAIAgent(aiAgent);
     setConfig({
-      jwtSecret: process.env.JWT_SECRET || 'dev-secret',
-      aiApiKey: process.env.AI_API_KEY,
-      storageRoot
+      jwtSecret: appConfig.server.jwtSecret,
+      aiApiKey: appConfig.ai.apiKey,
+      storageRoot: appConfig.storage.root
     });
     
   } catch (error) {
@@ -154,10 +143,12 @@ app.use(errorHandler);
 
 // Start server after database connection
 connectToDatabase().then(() => {
-  app.listen(PORT, () => {
-    console.log(`🚀 DEHN Backend server is running on port ${PORT}`);
-    console.log(`🌐 API available at http://localhost:${PORT}`);
-    console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  // Start the server
+  app.listen(appConfig.server.port, () => {
+    console.log(`🚀 DEHN Backend server is running on port ${appConfig.server.port}`);
+    console.log(`🌐 API available at http://localhost:${appConfig.server.port}`);
+    console.log(`📊 Health check: http://localhost:${appConfig.server.port}/health`);
+    console.log('💡 Press Ctrl+C to stop the server');
   });
 });
 

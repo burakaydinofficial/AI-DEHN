@@ -9,6 +9,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { v4 as uuidv4 } from 'uuid';
 import { getDb, getStorage, getConfig, getAppContext } from '../../utils/context';
+import { appConfig } from '../../config';
 import { 
   Document, 
   DocumentUploadResponse, 
@@ -45,7 +46,6 @@ documentsRouter.post('/upload', upload.single('file'), async (req: Request, res:
     const now = new Date();
     const db = getDb();
     const storage = getStorage();
-    const config = getConfig<{ pdfProcessorUrl: string }>();
 
     // Save original PDF to private bucket
     const originalKey = `documents/${id}/original/${file.originalname}`;
@@ -69,7 +69,8 @@ documentsRouter.post('/upload', upload.single('file'), async (req: Request, res:
     // Call PDF processor to get ZIP (analysis json + images)
     const fd = new FormData();
     fd.append('file', file.buffer, { filename: file.originalname, contentType: file.mimetype });
-    const zipResp = await axios.post(`${config.pdfProcessorUrl}/extract/zip`, fd, { headers: fd.getHeaders(), responseType: 'arraybuffer', timeout: 120000 });
+
+    const zipResp = await axios.post(`${appConfig.services.pdfProcessorUrl}/extract/zip`, fd, { headers: fd.getHeaders(), responseType: 'arraybuffer', timeout: 120000 });
 
     // Upload ZIP bundle
     const zipBuf = Buffer.from(zipResp.data);
@@ -105,7 +106,7 @@ documentsRouter.post('/upload', upload.single('file'), async (req: Request, res:
     // Also call JSON endpoint for structured metadata/content
     const fd2 = new FormData();
     fd2.append('file', file.buffer, { filename: file.originalname, contentType: file.mimetype });
-    const jsonResp = await axios.post(`${config.pdfProcessorUrl}/extract`, fd2, { headers: fd2.getHeaders(), timeout: 120000 });
+    const jsonResp = await axios.post(`${appConfig.services.pdfProcessorUrl}/extract`, fd2, { headers: fd2.getHeaders(), timeout: 120000 });
     const result: PDFProcessingResult = jsonResp.data;
 
     // Save analysis JSON to storage

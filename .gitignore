@@ -130,6 +130,7 @@ temp/
 # Storage
 uploads/
 # storage/ # causes some libraries to be excluded from git
+backend/storage/
 bucket/
 minio_data/
 
