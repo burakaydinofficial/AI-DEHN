@@ -120,16 +120,6 @@ export interface PDFLayoutInfo {
   color_format: string;
 }
 
-export interface PDFImageInfo {
-  image_index: number;
-  width: number;
-  height: number;
-  colorspace: string;
-  bpc: number; // Bits per component
-  ext: string; // File extension
-  filename: string;
-}
-
 export interface PDFAnalysisData {
   success: boolean;
   metadata: PDFMetadata;

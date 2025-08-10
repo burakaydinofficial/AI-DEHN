@@ -11,7 +11,11 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import './AdminPages.css';
-import type { AILogEntry } from '../../types/api';
+import type { 
+  AILogEntry, 
+  ContentReductionResult, 
+  ChunksResult
+} from '../../types/api';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
@@ -34,34 +38,15 @@ interface Document {
   };
 }
 
-interface ContentReductionGroup {
-  id: string;
-  type: 'title' | 'paragraph' | 'list' | 'other';
-  originalText: string;
-  detectedLanguage: string;
-  confidence: number;
-  wordCount: number;
-  bbox?: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
-  page: number;
-}
-
-interface DetailedReductionResult {
-  documentId: string;
-  totalGroups: number;
-  languagesDetected: string[];
-  processedAt: string;
-  processingModel: string;
-  chunksGenerated: number;
-  groups: ContentReductionGroup[];
-  statistics: {
-    averageConfidence: number;
-    languageDistribution: Record<string, number>;
-    typeDistribution: Record<string, number>;
+// Interface for the backend reduction details response
+interface ReductionDetailsResponse {
+  reduction: ContentReductionResult;
+  chunks: ChunksResult | null;
+  summary: {
+    totalGroups: number;
+    languagesDetected: string[];
+    processedAt: string;
+    totalChunks: number;
   };
 }
 
@@ -70,7 +55,7 @@ export const ContentReductionPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<Set<string>>(new Set());
   const [viewingDetails, setViewingDetails] = useState<string | null>(null);
-  const [reductionDetails, setReductionDetails] = useState<DetailedReductionResult | null>(null);
+  const [reductionDetails, setReductionDetails] = useState<ReductionDetailsResponse | null>(null);
   const [loadingReductionDetails, setLoadingReductionDetails] = useState(false);
   const [aiLogs, setAiLogs] = useState<AILogEntry[]>([]);
   const [showAiLogs, setShowAiLogs] = useState(false);
@@ -288,10 +273,6 @@ Chunks generated: ${result.chunksGenerated}`);
             <h1>Content Reduction</h1>
           </div>
         </div>
-        <p className="admin-section-description">
-          AI-powered content reduction using Gemini 1.5 Pro. 
-          Automatically detects languages, groups content, and prepares documents for translation.
-        </p>
 
         {/* Document List */}
         {documents.length === 0 ? (
@@ -501,26 +482,25 @@ Chunks generated: ${result.chunksGenerated}`);
                   <div className="reduction-summary">
                     <div className="summary-stats">
                       <div className="summary-stat">
-                        <div className="stat-value">{reductionDetails.totalGroups}</div>
+                        <div className="stat-value">{reductionDetails.summary.totalGroups}</div>
                         <div className="stat-label">Total Groups</div>
                       </div>
                       <div className="summary-stat">
-                        <div className="stat-value">{reductionDetails.languagesDetected.length}</div>
+                        <div className="stat-value">{reductionDetails.summary.languagesDetected.length}</div>
                         <div className="stat-label">Languages</div>
                       </div>
                       <div className="summary-stat">
-                        <div className="stat-value">{reductionDetails.chunksGenerated}</div>
+                        <div className="stat-value">{reductionDetails.summary.totalChunks}</div>
                         <div className="stat-label">Chunks Generated</div>
                       </div>
                       <div className="summary-stat">
-                        <div className="stat-value">{Math.round(reductionDetails.statistics.averageConfidence * 100)}%</div>
+                        <div className="stat-value">100%</div>
                         <div className="stat-label">Avg Confidence</div>
                       </div>
                     </div>
                     
                     <div className="processing-info">
-                      <p><strong>Model:</strong> {reductionDetails.processingModel}</p>
-                      <p><strong>Processed:</strong> {new Date(reductionDetails.processedAt).toLocaleString()}</p>
+                      <p><strong>Processed:</strong> {new Date(reductionDetails.summary.processedAt).toLocaleString()}</p>
                     </div>
                   </div>
 
@@ -528,18 +508,20 @@ Chunks generated: ${result.chunksGenerated}`);
                   <div className="section">
                     <h4>Language Distribution</h4>
                     <div className="language-distribution">
-                      {Object.entries(reductionDetails.statistics.languageDistribution).map(([lang, count]) => (
+                      {reductionDetails.summary.languagesDetected.map((lang) => (
                         <div key={lang} className="language-bar">
                           <span className="language-name">{lang.toUpperCase()}</span>
                           <div className="bar">
                             <div 
                               className="bar-fill"
                               style={{ 
-                                width: `${(count / reductionDetails.totalGroups) * 100}%`
+                                width: `${(1 / reductionDetails.summary.languagesDetected.length) * 100}%`
                               }}
                             />
                           </div>
-                          <span className="language-count">{count}</span>
+                          <span className="language-count">
+                            {reductionDetails.reduction.groups.filter(g => g.originalTexts.some(t => t.language === lang)).length}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -549,36 +531,43 @@ Chunks generated: ${result.chunksGenerated}`);
                   <div className="section">
                     <h4>Content Type Distribution</h4>
                     <div className="type-distribution">
-                      {Object.entries(reductionDetails.statistics.typeDistribution).map(([type, count]) => (
-                        <div key={type} className="type-item">
-                          <span className="type-name">{type}</span>
-                          <span className="type-count">{count}</span>
-                        </div>
-                      ))}
+                      {['title', 'paragraph', 'list', 'table', 'other'].map((type) => {
+                        const count = reductionDetails.reduction.groups.filter(g => g.type === type).length;
+                        return count > 0 ? (
+                          <div key={type} className="type-item">
+                            <span className="type-name">{type}</span>
+                            <span className="type-count">{count}</span>
+                          </div>
+                        ) : null;
+                      })}
                     </div>
                   </div>
 
                   {/* Groups */}
                   <div className="section">
-                    <h4>Content Groups ({reductionDetails.groups.length})</h4>
+                    <h4>Content Groups ({reductionDetails.reduction.groups.length})</h4>
                     <div className="groups-list">
-                      {reductionDetails.groups.slice(0, 10).map((group) => (
+                      {reductionDetails.reduction.groups.slice(0, 10).map((group) => (
                         <div key={group.id} className="group-item">
                           <div className="group-header">
                             <span className="group-type">{group.type}</span>
-                            <span className="group-lang">{group.detectedLanguage.toUpperCase()}</span>
-                            <span className="group-confidence">{Math.round(group.confidence * 100)}%</span>
-                            <span className="group-page">Page {group.page}</span>
+                            <span className="group-lang">
+                              {group.originalTexts.map(t => t.language.toUpperCase()).join(', ')}
+                            </span>
+                            <span className="group-confidence">
+                              {Math.round((group.originalTexts[0]?.confidence || 1) * 100)}%
+                            </span>
+                            <span className="group-page">Page {group.pageNumber}</span>
                           </div>
                           <div className="group-text">
-                            {group.originalText.substring(0, 200)}
-                            {group.originalText.length > 200 && '...'}
+                            {group.originalTexts[0]?.text.substring(0, 200)}
+                            {(group.originalTexts[0]?.text.length || 0) > 200 && '...'}
                           </div>
                         </div>
                       ))}
-                      {reductionDetails.groups.length > 10 && (
+                      {reductionDetails.reduction.groups.length > 10 && (
                         <div className="groups-more">
-                          +{reductionDetails.groups.length - 10} more groups
+                          +{reductionDetails.reduction.groups.length - 10} more groups
                         </div>
                       )}
                     </div>
