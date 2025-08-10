@@ -1270,6 +1270,33 @@
   flex-shrink: 0;
 }
 
+.admin-activity-type-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.admin-status-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.admin-status-icon.success {
+  color: #059669;
+}
+
+.admin-status-icon.processing {
+  color: #2563eb;
+}
+
+.admin-status-icon.error {
+  color: #dc2626;
+}
+
+.admin-health-status-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
 .admin-activity-details {
   flex: 1;
   min-width: 0;
@@ -1514,17 +1541,29 @@
   justify-content: center;
   width: 2rem;
   height: 2rem;
+  padding: 0.25rem !important;
   border: none;
-  background: none;
-  color: #6b7280;
-  cursor: pointer;
-  border-radius: 0.25rem;
-  transition: colors 0.15s ease-in-out;
-}
-
-.admin-modal-close:hover {
   background-color: #f3f4f6;
   color: #374151;
+  cursor: pointer;
+  border-radius: 0.25rem;
+  transition: all 0.15s ease-in-out;
+}
+
+.admin-modal-close svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.admin-modal-close:hover,
+.admin-modal-close:focus {
+  background-color: #e5e7eb;
+  color: #111827;
+  outline: none;
+}
+
+.admin-modal-close:focus {
+  box-shadow: 0 0 0 2px #3b82f6;
 }
 
 .admin-modal-content {

@@ -50,10 +50,47 @@ export const InventoryPage: React.FC = () => {
 
   const filteredDocuments = documents.filter(doc => {
     const matchesSearch = doc.originalName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         doc.id.toLowerCase().includes(searchTerm.toLowerCase());
+                         doc.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         doc.filename.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || doc.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // Enhanced statistics
+  const stats = {
+    total: documents.length,
+    processed: documents.filter(d => d.status === 'processed').length,
+    processing: documents.filter(d => d.status === 'processing').length,
+    failed: documents.filter(d => d.status === 'failed').length,
+    chunked: documents.filter(d => d.status === 'chunked').length,
+    translated: documents.filter(d => d.status === 'translated').length,
+    published: documents.filter(d => d.status === 'published').length,
+    totalSize: documents.reduce((acc, doc) => acc + (doc.size || 0), 0),
+    avgProcessingTime: calculateAverageProcessingTime(documents)
+  };
+
+  function calculateAverageProcessingTime(docs: Document[]): string {
+    const processedDocs = docs.filter(d => d.processedAt && d.uploadedAt);
+    if (processedDocs.length === 0) return 'N/A';
+    
+    const totalTime = processedDocs.reduce((acc, doc) => {
+      const start = new Date(doc.uploadedAt).getTime();
+      const end = new Date(doc.processedAt!).getTime();
+      return acc + (end - start);
+    }, 0);
+    
+    const avgMs = totalTime / processedDocs.length;
+    const avgMinutes = Math.round(avgMs / (1000 * 60));
+    return `${avgMinutes}m`;
+  }
+
+  function formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
 
   const handleRename = async () => {
     try {
@@ -110,6 +147,45 @@ export const InventoryPage: React.FC = () => {
           <RefreshCw className={`admin-btn-icon ${loading ? 'admin-loading-spinner' : ''}`} />
           Refresh
         </button>
+      </div>
+
+      {/* Statistics Dashboard */}
+      <div className="admin-stats-section">
+        <h3>Inventory Statistics</h3>
+        <div className="admin-stats-grid">
+          <div className="admin-stat-card info">
+            <div className="stat-value">{stats.total}</div>
+            <div className="stat-label">Total Documents</div>
+          </div>
+          <div className="admin-stat-card success">
+            <div className="stat-value">{stats.processed}</div>
+            <div className="stat-label">Processed</div>
+          </div>
+          <div className="admin-stat-card warning">
+            <div className="stat-value">{stats.processing}</div>
+            <div className="stat-label">Processing</div>
+          </div>
+          <div className="admin-stat-card danger">
+            <div className="stat-value">{stats.failed}</div>
+            <div className="stat-label">Failed</div>
+          </div>
+          <div className="admin-stat-card purple">
+            <div className="stat-value">{stats.translated}</div>
+            <div className="stat-label">Translated</div>
+          </div>
+          <div className="admin-stat-card secondary">
+            <div className="stat-value">{formatFileSize(stats.totalSize)}</div>
+            <div className="stat-label">Total Storage</div>
+          </div>
+          <div className="admin-stat-card info">
+            <div className="stat-value">{stats.avgProcessingTime}</div>
+            <div className="stat-label">Avg Processing Time</div>
+          </div>
+          <div className="admin-stat-card success">
+            <div className="stat-value">{stats.published}</div>
+            <div className="stat-label">Published</div>
+          </div>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -181,7 +257,7 @@ export const InventoryPage: React.FC = () => {
                   </td>
                   <td>
                     <span className="admin-file-size">
-                      {(doc.size / (1024 * 1024)).toFixed(2)} MB
+                      {formatFileSize(doc.size || 0)}
                     </span>
                   </td>
                   <td>

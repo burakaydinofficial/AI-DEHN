@@ -23,6 +23,12 @@ This is a multi-service document processing application built for a hackathon. T
 
 ## Development Guidelines
 
+### Development Environment
+- The developer typically runs projects in hot reload mode during development
+- Services are usually already running via `npm run dev` or similar commands
+- No need for the agent to start development servers unless explicitly requested
+- Focus on code changes rather than environment setup when working on existing features
+
 ### Code Style
 - Use TypeScript for all Node.js services and React applications
 - Follow functional programming patterns where possible
