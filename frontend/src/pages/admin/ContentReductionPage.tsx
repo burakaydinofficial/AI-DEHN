@@ -571,8 +571,7 @@ Chunks generated: ${result.chunksGenerated}`);
                             <span className="group-page">Page {group.pageNumber}</span>
                           </div>
                           <div className="group-text">
-                            {group.originalTexts[0]?.text.substring(0, 200)}
-                            {(group.originalTexts[0]?.text.length || 0) > 200 && '...'}
+                            {group.originalTexts[0]?.text}
                           </div>
                         </div>
                       ))}
@@ -632,13 +631,13 @@ Chunks generated: ${result.chunksGenerated}`);
                         {log.prompt && (
                           <div className="log-input">
                             <h5>Prompt:</h5>
-                            <pre>{log.prompt.substring(0, 500)}{log.prompt.length > 500 && '...'}</pre>
+                            <pre>{log.prompt}</pre>
                           </div>
                         )}
                         {log.response && (
                           <div className="log-output">
                             <h5>Response:</h5>
-                            <pre>{log.response.substring(0, 500)}{log.response.length > 500 && '...'}</pre>
+                            <pre>{log.response}</pre>
                           </div>
                         )}
                         {log.error && (
