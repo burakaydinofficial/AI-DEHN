@@ -582,6 +582,41 @@ Chunks generated: ${result.chunksGenerated}`);
                       )}
                     </div>
                   </div>
+
+                  {/* Markdown Chunks */}
+                  {reductionDetails.chunks && (
+                    <div className="section">
+                      <h4>Markdown Chunks ({reductionDetails.chunks.chunks.length})</h4>
+                      <div className="chunks-list">
+                        {reductionDetails.chunks.chunks.map((chunk) => (
+                          <div key={chunk.id} className="chunk-item">
+                            <div className="chunk-header">
+                              <span className="chunk-id">ID: {chunk.id}</span>
+                              <span className="chunk-lang">{chunk.language.toUpperCase()}</span>
+                              <span className="chunk-type">{chunk.metadata.chunkType}</span>
+                              <span className="chunk-pages">
+                                Pages: {chunk.pageNumbers.join(', ')}
+                              </span>
+                            </div>
+                            <div className="chunk-content">
+                              <h5>Markdown Content:</h5>
+                              <pre className="markdown-preview">{chunk.content}</pre>
+                            </div>
+                            {chunk.sourceGroups.length > 0 && (
+                              <div className="chunk-source-groups">
+                                <h6>Source Groups:</h6>
+                                <div className="source-groups-list">
+                                  {chunk.sourceGroups.map(groupId => (
+                                    <span key={groupId} className="source-group-id">{groupId}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="admin-empty-state">
