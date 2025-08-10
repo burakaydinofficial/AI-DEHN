@@ -7,6 +7,7 @@ import {
   TrendingUp,
   ThumbsUp
 } from 'lucide-react';
+import './FeedbackPage.css';
 
 interface UserQuery {
   id: string;
@@ -130,35 +131,6 @@ export const FeedbackPage: React.FC = () => {
     }, 1000);
   }, []);
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critical': return 'text-red-600 bg-red-100 border-red-200';
-      case 'high': return 'text-orange-600 bg-orange-100 border-orange-200';
-      case 'medium': return 'text-yellow-600 bg-yellow-100 border-yellow-200';
-      default: return 'text-blue-600 bg-blue-100 border-blue-200';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'new': return 'text-red-600 bg-red-100';
-      case 'ai-responded': return 'text-blue-600 bg-blue-100';
-      case 'escalated': return 'text-orange-600 bg-orange-100';
-      case 'resolved': return 'text-green-600 bg-green-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
-
-  const getImprovementStatusColor = (status: string) => {
-    switch (status) {
-      case 'flagged': return 'text-red-600 bg-red-100';
-      case 'in-progress': return 'text-orange-600 bg-orange-100';
-      case 'ready': return 'text-blue-600 bg-blue-100';
-      case 'deployed': return 'text-green-600 bg-green-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
-
   const formatTimeAgo = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -172,20 +144,22 @@ export const FeedbackPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-600">Loading feedback data...</span>
+      <div className="feedback-loading">
+        <div className="feedback-loading-content">
+          <RefreshCw className="feedback-loading-spinner animate-spin" />
+          <span className="feedback-loading-text">Loading feedback data...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white border rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">In-Context Feedback Loop</h3>
+    <div className="feedback-page">
+      <div className="feedback-header">
+        <h3 className="feedback-header-title">In-Context Feedback Loop</h3>
         
         {/* Tab Navigation */}
-        <div className="flex space-x-1 mb-6">
+        <div className="feedback-tabs">
           {[
             { id: 'live', label: 'Live Queries', icon: MessageSquare },
             { id: 'improvements', label: 'Content Improvements', icon: TrendingUp },
@@ -196,13 +170,13 @@ export const FeedbackPage: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`feedback-tab ${
                   activeTab === tab.id
-                    ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    ? 'feedback-tab-active'
+                    : ''
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="feedback-tab-icon" />
                 {tab.label}
               </button>
             );
@@ -211,70 +185,72 @@ export const FeedbackPage: React.FC = () => {
 
         {/* Live Queries Tab */}
         {activeTab === 'live' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium">Live User Queries</h4>
-              <button className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded hover:bg-blue-200">
-                <RefreshCw className="w-4 h-4 inline mr-1" />
+          <div className="live-queries-section">
+            <div className="live-queries-header">
+              <h4 className="live-queries-title">Live User Queries</h4>
+              <button className="refresh-btn">
+                <RefreshCw className="refresh-btn-icon" />
                 Refresh
               </button>
             </div>
             
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="query-list">
               {mockUserQueries.map((query) => (
-                <div key={query.id} className={`p-4 border rounded-lg ${
-                  query.status === 'new' ? 'bg-red-50 border-red-200' :
-                  query.status === 'escalated' ? 'bg-orange-50 border-orange-200' :
-                  query.status === 'resolved' ? 'bg-green-50 border-green-200' :
-                  'bg-blue-50 border-blue-200'
+                <div key={query.id} className={`query-item ${
+                  query.status === 'new' ? 'query-item-new' :
+                  query.status === 'escalated' ? 'query-item-escalated' :
+                  query.status === 'resolved' ? 'query-item-resolved' :
+                  'query-item-responded'
                 }`}>
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h5 className="font-medium text-sm">Manual: {query.document}</h5>
-                        <span className={`text-xs px-2 py-1 rounded ${getPriorityColor(query.priority)}`}>
+                  <div className="query-item-header">
+                    <div className="query-item-left">
+                      <div className="query-item-title">
+                        <h5 className="query-item-document">Manual: {query.document}</h5>
+                        <span className={`priority-badge priority-${query.priority}`}>
                           {query.priority}
                         </span>
-                        <span className={`text-xs px-2 py-1 rounded ${getStatusColor(query.status)}`}>
+                        <span className={`query-status-badge status-${query.status.replace('-', '-')}`}>
                           {query.status.replace('-', ' ')}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 mb-1">
+                      <p className="query-item-question">
                         {query.step}: "{query.question}"
                       </p>
                       {query.selectedText && (
-                        <p className="text-xs text-gray-500 italic">
+                        <p className="query-item-selected-text">
                           Selected text: "{query.selectedText}"
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <User className="w-3 h-3" />
+                    <div className="query-item-meta">
+                      <User className="query-item-meta-icon" />
                       <span>{query.user_id}</span>
-                      <Clock className="w-3 h-3 ml-2" />
+                      <Clock className="query-item-meta-icon" />
                       <span>{formatTimeAgo(query.timestamp)}</span>
                     </div>
                   </div>
                   
-                  <div className="flex gap-2">
-                    {query.status === 'new' && (
-                      <>
-                        <button className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200">
-                          AI Response
+                  <div className="query-actions">
+                    <div className="query-actions-row">
+                      {query.status === 'new' && (
+                        <>
+                          <button className="query-action-btn query-action-btn-blue">
+                            AI Response
+                          </button>
+                          <button className="query-action-btn query-action-btn-orange">
+                            Escalate
+                          </button>
+                        </>
+                      )}
+                      {query.status === 'ai-responded' && (
+                        <button className="query-action-btn query-action-btn-green">
+                          Mark Resolved
                         </button>
-                        <button className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded hover:bg-orange-200">
-                          Escalate
-                        </button>
-                      </>
-                    )}
-                    {query.status === 'ai-responded' && (
-                      <button className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded hover:bg-green-200">
-                        Mark Resolved
+                      )}
+                      <button className="query-action-btn query-action-btn-gray">
+                        View Context
                       </button>
-                    )}
-                    <button className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded hover:bg-gray-200">
-                      View Context
-                    </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -284,33 +260,33 @@ export const FeedbackPage: React.FC = () => {
 
         {/* Content Improvements Tab */}
         {activeTab === 'improvements' && (
-          <div className="space-y-4">
-            <h4 className="font-medium">Content Improvement Pipeline</h4>
+          <div className="improvements-section">
+            <h4 className="improvements-title">Content Improvement Pipeline</h4>
             
-            <div className="space-y-3">
+            <div className="improvements-list">
               {mockImprovements.map((improvement) => (
-                <div key={improvement.id} className="p-4 border rounded-lg">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h5 className="font-medium text-sm">{improvement.title}</h5>
-                      <p className="text-xs text-gray-600 mb-2">{improvement.description}</p>
-                      <p className="text-xs text-blue-600">
+                <div key={improvement.id} className="improvement-item">
+                  <div className="improvement-header">
+                    <div className="improvement-left">
+                      <h5 className="improvement-title">{improvement.title}</h5>
+                      <p className="improvement-description">{improvement.description}</p>
+                      <p className="improvement-similar">
                         {improvement.similar_queries} similar queries identified
                       </p>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded ${getImprovementStatusColor(improvement.status)}`}>
+                    <span className={`improvement-status-badge status-${improvement.status.replace('-', '-')}`}>
                       {improvement.status.replace('-', ' ')}
                     </span>
                   </div>
                   
-                  <div className="mb-3">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span>Progress</span>
-                      <span>{improvement.progress}%</span>
+                  <div className="improvement-progress">
+                    <div className="improvement-progress-header">
+                      <span className="improvement-progress-label">Progress</span>
+                      <span className="improvement-progress-value">{improvement.progress}%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="improvement-progress-bar">
                       <div 
-                        className={`h-2 rounded-full ${
+                        className={`improvement-progress-fill ${
                           improvement.progress === 100 ? 'bg-green-500' :
                           improvement.progress >= 50 ? 'bg-blue-500' : 'bg-orange-500'
                         }`}
@@ -319,23 +295,23 @@ export const FeedbackPage: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-wrap gap-1">
-                      <span className="text-xs text-gray-600">Languages:</span>
+                  <div className="improvement-actions">
+                    <div className="improvement-languages">
+                      <span className="improvement-language">Languages:</span>
                       {improvement.languages.map((lang) => (
-                        <span key={lang} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        <span key={lang} className="query-action-btn query-action-btn-blue">
                           {lang}
                         </span>
                       ))}
                     </div>
                     
-                    <div className="flex gap-2">
+                    <div className="improvement-buttons">
                       {improvement.status === 'ready' && (
-                        <button className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded hover:bg-green-200">
+                        <button className="query-action-btn query-action-btn-green">
                           Deploy Update
                         </button>
                       )}
-                      <button className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded hover:bg-gray-200">
+                      <button className="query-action-btn query-action-btn-gray">
                         View Details
                       </button>
                     </div>
@@ -348,78 +324,78 @@ export const FeedbackPage: React.FC = () => {
 
         {/* Analytics Tab */}
         {activeTab === 'analytics' && (
-          <div className="space-y-6">
-            <h4 className="font-medium">Analytics Dashboard</h4>
+          <div className="analytics-section">
+            <h4 className="analytics-title">Analytics Dashboard</h4>
             
             {/* Key Metrics */}
-            <div className="grid grid-cols-4 gap-4">
-              <div className="text-center p-4 border rounded-lg">
-                <p className="text-2xl font-bold text-blue-600">{mockAnalytics.queries_this_week}</p>
-                <p className="text-xs text-gray-600">Queries This Week</p>
-                <div className="flex items-center justify-center gap-1 mt-1">
-                  <TrendingUp className="w-3 h-3 text-green-500" />
-                  <span className="text-xs text-green-600">+12%</span>
+            <div className="analytics-grid">
+              <div className="analytics-card">
+                <p className="analytics-value">{mockAnalytics.queries_this_week}</p>
+                <p className="analytics-label">Queries This Week</p>
+                <div className="analytics-trend">
+                  <TrendingUp className="analytics-trend-icon" />
+                  <span className="analytics-trend-value">+12%</span>
                 </div>
               </div>
-              <div className="text-center p-4 border rounded-lg">
-                <p className="text-2xl font-bold text-green-600">{mockAnalytics.ai_resolution_rate}%</p>
-                <p className="text-xs text-gray-600">AI Resolution Rate</p>
-                <div className="flex items-center justify-center gap-1 mt-1">
-                  <TrendingUp className="w-3 h-3 text-green-500" />
-                  <span className="text-xs text-green-600">+5%</span>
+              <div className="analytics-card">
+                <p className="analytics-value analytics-value-green">{mockAnalytics.ai_resolution_rate}%</p>
+                <p className="analytics-label">AI Resolution Rate</p>
+                <div className="analytics-trend">
+                  <TrendingUp className="analytics-trend-icon" />
+                  <span className="analytics-trend-value">+5%</span>
                 </div>
               </div>
-              <div className="text-center p-4 border rounded-lg">
-                <p className="text-2xl font-bold text-orange-600">{mockAnalytics.content_updates}</p>
-                <p className="text-xs text-gray-600">Content Updates</p>
-                <div className="flex items-center justify-center gap-1 mt-1">
-                  <TrendingUp className="w-3 h-3 text-green-500" />
-                  <span className="text-xs text-green-600">+8%</span>
+              <div className="analytics-card">
+                <p className="analytics-value analytics-value-orange">{mockAnalytics.content_updates}</p>
+                <p className="analytics-label">Content Updates</p>
+                <div className="analytics-trend">
+                  <TrendingUp className="analytics-trend-icon" />
+                  <span className="analytics-trend-value">+8%</span>
                 </div>
               </div>
-              <div className="text-center p-4 border rounded-lg">
-                <p className="text-2xl font-bold text-purple-600">{mockAnalytics.user_satisfaction}</p>
-                <p className="text-xs text-gray-600">User Satisfaction</p>
-                <div className="flex items-center justify-center gap-1 mt-1">
-                  <ThumbsUp className="w-3 h-3 text-green-500" />
-                  <span className="text-xs text-green-600">Excellent</span>
+              <div className="analytics-card">
+                <p className="analytics-value analytics-value-purple">{mockAnalytics.user_satisfaction}</p>
+                <p className="analytics-label">User Satisfaction</p>
+                <div className="analytics-trend">
+                  <ThumbsUp className="analytics-trend-icon" />
+                  <span className="analytics-trend-value">Excellent</span>
                 </div>
               </div>
             </div>
 
             {/* Query Categories */}
-            <div>
-              <h5 className="font-medium mb-3">Query Categories</h5>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="categories-section">
+              <h5 className="categories-title">Query Categories</h5>
+              <div className="categories-grid">
                 {[
                   { category: 'Safety Questions', count: 45, color: 'red' },
                   { category: 'Technical Specs', count: 38, color: 'blue' },
                   { category: 'Installation Steps', count: 32, color: 'green' },
                   { category: 'Troubleshooting', count: 32, color: 'orange' }
                 ].map((item) => (
-                  <div key={item.category} className={`p-3 bg-${item.color}-50 border border-${item.color}-200 rounded-lg`}>
-                    <p className={`text-lg font-bold text-${item.color}-600`}>{item.count}</p>
-                    <p className="text-xs text-gray-600">{item.category}</p>
+                  <div key={item.category} className="category-item">
+                    <p className={`category-count analytics-value-${item.color}`}>{item.count}</p>
+                    <p className="category-label">{item.category}</p>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Response Time Metrics */}
-            <div>
-              <h5 className="font-medium mb-3">Response Performance</h5>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="p-3 border rounded-lg text-center">
-                  <p className="text-lg font-bold text-green-600">&lt;30s</p>
-                  <p className="text-xs text-gray-600">Avg AI Response</p>
+            <div className="performance-section">
+              <h5 className="performance-title">Response Performance</h5>
+              <div className="performance-grid">
+                <div className="performance-item">
+                  <p className="performance-value performance-value-green">&lt;30s</p>
+                  <p className="performance-label">Avg AI Response</p>
                 </div>
-                <div className="p-3 border rounded-lg text-center">
-                  <p className="text-lg font-bold text-blue-600">2.3h</p>
-                  <p className="text-xs text-gray-600">Avg Expert Response</p>
+                <div className="performance-item">
+                  <p className="performance-value performance-value-blue">2.3h</p>
+                  <p className="performance-label">Avg Expert Response</p>
                 </div>
-                <div className="p-3 border rounded-lg text-center">
-                  <p className="text-lg font-bold text-purple-600">1.2d</p>
-                  <p className="text-xs text-gray-600">Avg Resolution Time</p>
+                <div className="performance-item">
+                  <p className="performance-value performance-value-purple">1.2d</p>
+                  <p className="performance-label">Avg Resolution Time</p>
                 </div>
               </div>
             </div>

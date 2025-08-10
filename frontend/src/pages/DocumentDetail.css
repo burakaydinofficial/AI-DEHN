@@ -867,6 +867,95 @@
   color: #6b7280;
 }
 
+/* Additional status info */
+.status-additional-info {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.status-info-item {
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* Document sections grid */
+.document-sections-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .document-sections-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 2rem 0;
+  color: #6b7280;
+}
+
+.empty-state-icon {
+  width: 3rem;
+  height: 3rem;
+  margin: 0 auto 1rem auto;
+  color: #d1d5db;
+}
+
+.empty-state-subtitle {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+/* Translation list */
+.translation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.translation-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background-color: #f9fafb;
+  border-radius: 0.5rem;
+}
+
+.translation-item-left {
+  display: flex;
+  align-items: center;
+}
+
+.translation-avatar {
+  width: 2rem;
+  height: 2rem;
+  background-color: #cffafe;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0.75rem;
+}
+
+.translation-avatar-text {
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: #0e7490;
+}
+
+.translation-language {
+  font-weight: 500;
+  color: #111827;
+}
+
 /* Processing grid */
 .processing-grid {
   display: grid;
@@ -885,6 +974,29 @@
   .processing-grid {
     grid-template-columns: repeat(3, 1fr);
   }
+}
+
+/* Additional button variants */
+.btn-xs {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.btn-purple {
+  background-color: #f3f4f6;
+  border-color: #e4e3ff;
+  color: #7c3aed;
+}
+
+.btn-purple:hover:not(:disabled) {
+  background-color: #ede9fe;
+}
+
+.btn-disabled {
+  background-color: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
 }
 
 /* Animation classes */

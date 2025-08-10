@@ -298,16 +298,16 @@ export function DocumentDetail() {
               
               {/* Additional Info */}
               {(doc.availableLanguages?.length || doc.contentReduction) && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="status-additional-info">
                   {doc.availableLanguages && doc.availableLanguages.length > 0 && (
-                    <div className="flex items-center text-sm text-gray-600 mb-2">
-                      <Languages className="w-4 h-4 mr-2" />
+                    <div className="status-info-item mb-2">
+                      <Languages className="icon-xs mr-2" />
                       Languages detected: {doc.availableLanguages.join(', ')}
                     </div>
                   )}
                   {doc.contentReduction && (
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Clock className="w-4 h-4 mr-2" />
+                    <div className="status-info-item">
+                      <Clock className="icon-xs mr-2" />
                       {doc.contentReduction.totalGroups} groups processed with {doc.contentReduction.metadata.aiModel}
                     </div>
                   )}
@@ -317,46 +317,46 @@ export function DocumentDetail() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="document-sections-grid">
           {/* Translations */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <Languages className="w-5 h-5 mr-2 text-cyan-600" />
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">
+                <Languages className="icon-sm mr-2 text-cyan-600" />
                 Translations ({(doc.translations || []).length})
               </h3>
             </div>
-            <div className="p-6">
+            <div className="card-body">
               {(doc.translations || []).length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Languages className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <div className="empty-state">
+                  <Languages className="empty-state-icon" />
                   <p>No translations yet</p>
-                  <p className="text-xs mt-1">Generate translations using the buttons above</p>
+                  <p className="empty-state-subtitle">Generate translations using the buttons above</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="translation-list">
                   {(doc.translations || []).map((t, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 bg-cyan-100 rounded-full flex items-center justify-center mr-3">
-                          <span className="text-xs font-bold text-cyan-700">{(t.language || 'unknown').toUpperCase()}</span>
+                    <div key={idx} className="translation-item">
+                      <div className="translation-item-left">
+                        <div className="translation-avatar">
+                          <span className="translation-avatar-text">{(t.language || 'unknown').toUpperCase()}</span>
                         </div>
-                        <span className="font-medium text-gray-900">{t.language || 'Unknown Language'}</span>
+                        <span className="translation-language">{t.language || 'Unknown Language'}</span>
                       </div>
                       <button
                         onClick={() => publish(t.language || 'unknown', 'generated')}
                         disabled={processing === `publish-${t.language}-generated`}
                         className={clsx(
-                          'inline-flex items-center px-3 py-1.5 border rounded-md text-xs font-medium transition-colors',
+                          'btn btn-xs',
                           processing === `publish-${t.language}-generated`
-                            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100'
+                            ? 'btn-disabled'
+                            : 'btn-purple'
                         )}
                       >
                         {processing === `publish-${t.language}-generated` ? (
-                          <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                          <RefreshCw className="icon-xs mr-1 animate-spin" />
                         ) : (
-                          <Globe className="w-3 h-3 mr-1" />
+                          <Globe className="icon-xs mr-1" />
                         )}
                         Publish
                       </button>
