@@ -2270,3 +2270,170 @@
     font-size: 1rem !important; /* Prevent zoom on iOS */
   }
 }
+
+/* ======================== */
+/* TRANSLATION PAGE STYLES */
+/* ======================== */
+
+/* Language Selection Grid */
+.language-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+  gap: 0.75rem !important;
+  margin-top: 0.5rem !important;
+}
+
+.language-option {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 0.25rem !important;
+  padding: 0.75rem 0.5rem !important;
+  border: 2px solid transparent !important;
+  border-radius: 0.5rem !important;
+  background: linear-gradient(145deg, #f8fafc, #f1f5f9) !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+  text-align: center !important;
+}
+
+.language-option:hover {
+  background: linear-gradient(145deg, #e2e8f0, #cbd5e1) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.language-option-selected {
+  border-color: #3b82f6 !important;
+  background: linear-gradient(145deg, #dbeafe, #bfdbfe) !important;
+  color: #1d4ed8 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+.language-option-unselected {
+  border-color: #e5e7eb !important;
+}
+
+/* Language Tags */
+.admin-language-tag {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 0.25rem 0.5rem !important;
+  background: linear-gradient(145deg, #f3f4f6, #e5e7eb) !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 0.375rem !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  color: #374151 !important;
+  white-space: nowrap !important;
+}
+
+.admin-language-tag-clickable {
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.admin-language-tag-clickable:hover {
+  background: linear-gradient(145deg, #e5e7eb, #d1d5db) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Admin Inline Label */
+.admin-label-inline {
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  color: #374151 !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+}
+
+/* Admin Checkbox */
+.admin-checkbox {
+  width: 1rem !important;
+  height: 1rem !important;
+  border-radius: 0.25rem !important;
+  border: 2px solid #d1d5db !important;
+  background: #ffffff !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.admin-checkbox:checked {
+  background: linear-gradient(145deg, #3b82f6, #2563eb) !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+.admin-checkbox:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Admin Empty State */
+.admin-empty-state {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 3rem !important;
+  text-align: center !important;
+  color: #6b7280 !important;
+}
+
+.admin-empty-state h3 {
+  font-size: 1.125rem !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+  margin: 0 0 0.5rem 0 !important;
+}
+
+.admin-empty-state p {
+  font-size: 0.875rem !important;
+  color: #6b7280 !important;
+  margin: 0 !important;
+}
+
+/* Status Badge Colors */
+.admin-status-badge.text-blue-600 {
+  color: #2563eb !important;
+  background: linear-gradient(145deg, #dbeafe, #bfdbfe) !important;
+}
+
+.admin-status-badge.text-orange-600 {
+  color: #ea580c !important;
+  background: linear-gradient(145deg, #fed7aa, #fdba74) !important;
+}
+
+.admin-status-badge.text-green-600 {
+  color: #16a34a !important;
+  background: linear-gradient(145deg, #dcfce7, #bbf7d0) !important;
+}
+
+.admin-status-badge.text-red-600 {
+  color: #dc2626 !important;
+  background: linear-gradient(145deg, #fee2e2, #fecaca) !important;
+}
+
+.admin-status-badge.text-gray-600 {
+  color: #4b5563 !important;
+  background: linear-gradient(145deg, #f3f4f6, #e5e7eb) !important;
+}
+
+/* Responsive Design for Translation Page */
+@media (max-width: 768px) {
+  .language-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)) !important;
+    gap: 0.5rem !important;
+  }
+  
+  .language-option {
+    padding: 0.5rem 0.25rem !important;
+    font-size: 0.75rem !important;
+  }
+  
+  .admin-language-tag {
+    font-size: 0.625rem !important;
+    padding: 0.125rem 0.375rem !important;
+  }
+}

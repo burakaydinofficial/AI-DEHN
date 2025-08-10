@@ -3,10 +3,11 @@ import {
   Languages, 
   RefreshCw, 
   CheckCircle,
+  AlertCircle,
   Play,
-  Eye,
-  Globe,
-  Download
+  Download,
+  Clock,
+  Loader
 } from 'lucide-react';
 import axios from 'axios';
 import './AdminPages.css';
@@ -17,26 +18,40 @@ interface Document {
   id: string;
   filename: string;
   originalName: string;
-  status: 'reduced' | 'translated' | 'failed';
+  status: 'reduced' | 'translating' | 'translated' | 'failed' | 'processing';
+  processingStage?: string;
   contentReduction?: {
     totalGroups: number;
     languagesDetected: string[];
     processedAt: string;
   };
-  translations?: {
-    [lang: string]: {
-      status: 'pending' | 'completed' | 'failed';
-      completedAt?: string;
-      textGroupsCount?: number;
-    };
+  translations?: TranslationArtifact[];
+  error?: string;
+}
+
+interface TranslationArtifact {
+  id: string;
+  name: string;
+  language: string;
+  size: number;
+  uploadedAt: string;
+  version: string;
+  metadata?: {
+    aiModel?: string;
+    translationStrategy?: string;
+    qualityLevel?: string;
+    processingTime?: number;
+    groupCount?: number;
   };
 }
 
 interface TranslationParams {
-  aiModel: string;
   targetLanguages: string[];
-  translationStrategy: string;
-  qualityLevel: string;
+  translationStrategy: 'contextual' | 'literal' | 'creative';
+  qualityLevel: 'fast' | 'balanced' | 'high' | 'creative';
+  aiModel: 'gemini-1.5-flash' | 'gemini-2.5-flash';
+  sourceLanguage?: string;
+  preserveLayout: boolean;
 }
 
 const AVAILABLE_LANGUAGES = [
@@ -49,35 +64,53 @@ const AVAILABLE_LANGUAGES = [
   { code: 'nl', name: 'Dutch', flag: '🇳🇱' },
   { code: 'pl', name: 'Polish', flag: '🇵🇱' },
   { code: 'ru', name: 'Russian', flag: '🇷🇺' },
-  { code: 'zh', name: 'Chinese', flag: '🇨🇳' },
   { code: 'ja', name: 'Japanese', flag: '🇯🇵' },
   { code: 'ko', name: 'Korean', flag: '🇰🇷' },
+  { code: 'zh', name: 'Chinese', flag: '🇨🇳' },
   { code: 'ar', name: 'Arabic', flag: '🇸🇦' },
+  { code: 'hi', name: 'Hindi', flag: '🇮🇳' },
+  { code: 'tr', name: 'Turkish', flag: '🇹🇷' }
+];
+
+const AI_MODELS = [
+  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash', description: 'Fast, cost-effective' },
+  { value: 'gemini-2.5-flash', label: 'Gemini 1.5 Pro', description: 'High quality, more accurate' }
+];
+
+const TRANSLATION_STRATEGIES = [
+  { value: 'contextual', label: 'Contextual', description: 'Maintains context and meaning' },
+  { value: 'literal', label: 'Literal', description: 'Direct word-to-word translation' },
+  { value: 'creative', label: 'Creative', description: 'Adaptive, culturally aware' }
+];
+
+const QUALITY_LEVELS = [
+  { value: 'fast', label: 'Fast', description: 'Quick, basic quality' },
+  { value: 'balanced', label: 'Balanced', description: 'Good balance of speed and quality' },
+  { value: 'high', label: 'High Quality', description: 'Best quality, slower' },
+  { value: 'creative', label: 'Creative', description: 'Most adaptive, slowest' }
 ];
 
 export const TranslationPage: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [translating, setTranslating] = useState<Set<string>>(new Set());
+  const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
   const [translationParams, setTranslationParams] = useState<TranslationParams>({
-    aiModel: 'gemini-1.5-pro',
-    targetLanguages: ['en', 'es', 'fr'],
+    targetLanguages: [],
     translationStrategy: 'contextual',
-    qualityLevel: 'balanced'
+    qualityLevel: 'balanced',
+    aiModel: 'gemini-2.5-flash',
+    preserveLayout: true
   });
-
-  useEffect(() => {
-    fetchDocuments();
-  }, []);
 
   const fetchDocuments = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/admin/documents`);
-      // Only show documents that are ready for translation
-      const docs = (response.data.data || []).filter((doc: Document) => 
-        doc.status === 'reduced' || doc.status === 'translated'
-      );
-      setDocuments(docs);
+      setLoading(true);
+      const response = await axios.get(`${API_BASE}/admin/documents?status=reduced,translated,translating,processing`);
+      const filteredDocs = response.data.data.documents?.filter((doc: Document) => 
+        ['reduced', 'translated', 'translating', 'processing'].includes(doc.status)
+      ) || [];
+      setDocuments(filteredDocs);
     } catch (error) {
       console.error('Failed to fetch documents:', error);
     } finally {
@@ -85,23 +118,32 @@ export const TranslationPage: React.FC = () => {
     }
   };
 
-  const startTranslation = async (documentId: string) => {
-    try {
-      setTranslating(prev => new Set(prev).add(documentId));
-      
-      const response = await axios.post(`${API_BASE}/admin/documents/${documentId}/translate`, {
-        targetLanguages: translationParams.targetLanguages,
-        aiModel: translationParams.aiModel,
-        translationStrategy: translationParams.translationStrategy,
-        qualityLevel: translationParams.qualityLevel
-      });
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
 
-      if (response.data.success) {
-        await fetchDocuments();
-      }
+  const startTranslation = async (documentId: string) => {
+    if (translationParams.targetLanguages.length === 0) {
+      alert('Please select at least one target language');
+      return;
+    }
+
+    try {
+      setTranslating(prev => new Set([...prev, documentId]));
+      
+      const requestData = {
+        ...translationParams,
+        documentId
+      };
+
+      await axios.post(`${API_BASE}/admin/documents/${documentId}/translate`, requestData);
+      
+      // Refresh documents to show updated status
+      await fetchDocuments();
+      
     } catch (error: any) {
       console.error('Translation failed:', error);
-      alert(error.response?.data?.message || 'Translation failed');
+      alert(error.response?.data?.error || 'Translation failed');
     } finally {
       setTranslating(prev => {
         const newSet = new Set(prev);
@@ -141,38 +183,67 @@ export const TranslationPage: React.FC = () => {
     }));
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
+  const toggleDocumentSelection = (documentId: string) => {
+    setSelectedDocuments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(documentId)) {
+        newSet.delete(documentId);
+      } else {
+        newSet.add(documentId);
+      }
+      return newSet;
+    });
+  };
+
+  const startBatchTranslation = async () => {
+    if (selectedDocuments.size === 0) {
+      alert('Please select at least one document');
+      return;
+    }
+    
+    if (translationParams.targetLanguages.length === 0) {
+      alert('Please select at least one target language');
+      return;
+    }
+
+    const documentsArray = Array.from(selectedDocuments);
+    for (const docId of documentsArray) {
+      await startTranslation(docId);
+    }
+    
+    setSelectedDocuments(new Set());
+  };
+
+  const getStatusInfo = (doc: Document) => {
+    switch (doc.status) {
       case 'reduced':
-        return 'border-blue-200 bg-blue-50 text-blue-700';
+        return { color: 'text-blue-600 bg-blue-100', icon: <Clock className="w-4 h-4" />, text: 'Ready for Translation' };
+      case 'processing':
+      case 'translating':
+        return { color: 'text-orange-600 bg-orange-100', icon: <Loader className="w-4 h-4 animate-spin" />, text: 'Translating...' };
       case 'translated':
-        return 'border-green-200 bg-green-50 text-green-700';
+        return { color: 'text-green-600 bg-green-100', icon: <CheckCircle className="w-4 h-4" />, text: 'Translation Complete' };
       case 'failed':
-        return 'border-red-200 bg-red-50 text-red-700';
+        return { color: 'text-red-600 bg-red-100', icon: <AlertCircle className="w-4 h-4" />, text: 'Translation Failed' };
       default:
-        return 'border-gray-200 bg-gray-50 text-gray-700';
+        return { color: 'text-gray-600 bg-gray-100', icon: <Clock className="w-4 h-4" />, text: 'Unknown Status' };
     }
   };
 
-  const getTranslationStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'failed':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  const getLanguageName = (code: string): string => {
+    const lang = AVAILABLE_LANGUAGES.find(l => l.code === code);
+    return lang ? `${lang.flag} ${lang.name}` : code.toUpperCase();
   };
 
   if (loading) {
     return (
-      <div className="admin-loading">
-        <div className="admin-loading-content">
-          <RefreshCw className="admin-loading-spinner" />
-          <span>Loading documents...</span>
+      <div className="admin-page">
+        <div className="admin-header">
+          <h1><Languages className="w-6 h-6" />Translation Management</h1>
+        </div>
+        <div className="admin-loading">
+          <RefreshCw className="w-8 h-8 animate-spin" />
+          Loading documents...
         </div>
       </div>
     );
@@ -180,267 +251,276 @@ export const TranslationPage: React.FC = () => {
 
   return (
     <div className="admin-page">
-      {/* Header */}
-      <div className="admin-section">
-        <div className="admin-page-header">
-          <div className="admin-page-title">
-            <Languages className="admin-page-icon" />
-            <h1>Translation Generation</h1>
-          </div>
+      <div className="admin-header">
+        <div className="admin-header-left">
+          <h1><Languages className="w-6 h-6" />Translation Management</h1>
+          <p className="admin-subtitle">AI-powered multilingual document translation</p>
         </div>
-        <p className="admin-section-description">
-          Generate multilingual translations using AI. Convert text groups into target languages while 
-          preserving context, formatting, and technical terminology.
-        </p>
+        <div className="admin-header-actions">
+          <button 
+            className="admin-btn admin-btn-secondary"
+            onClick={fetchDocuments}
+            disabled={loading}
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          {selectedDocuments.size > 0 && (
+            <button 
+              className="admin-btn admin-btn-primary"
+              onClick={startBatchTranslation}
+            >
+              <Play className="w-4 h-4" />
+              Translate Selected ({selectedDocuments.size})
+            </button>
+          )}
+        </div>
+      </div>
 
-        {/* Translation Parameters */}
-        <div className="admin-form-section">
-          <h3 className="admin-form-section-title">Translation Configuration</h3>
-          
-          <div className="admin-form-grid translation-config">
-            {/* AI Settings */}
-            <div className="admin-translation-settings">
-              <div className="admin-form-group">
-                <label className="admin-form-label">
-                  AI Model
-                </label>
-                <select
-                  value={translationParams.aiModel}
-                  onChange={(e) => setTranslationParams(prev => ({ ...prev, aiModel: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                  <option value="gemini-1.0-pro">Gemini 1.0 Pro</option>
-                  <option value="gpt-4">GPT-4</option>
-                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Translation Strategy
-                </label>
-                <select
-                  value={translationParams.translationStrategy}
-                  onChange={(e) => setTranslationParams(prev => ({ ...prev, translationStrategy: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="contextual">Contextual (Preserve meaning)</option>
-                  <option value="literal">Literal (Word-for-word)</option>
-                  <option value="creative">Creative (Localized)</option>
-                  <option value="technical">Technical (Preserve terminology)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Quality Level
-                </label>
-                <select
-                  value={translationParams.qualityLevel}
-                  onChange={(e) => setTranslationParams(prev => ({ ...prev, qualityLevel: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="fast">Fast (Quick processing)</option>
-                  <option value="balanced">Balanced (Good quality/speed)</option>
-                  <option value="high">High (Best quality)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Language Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+      {/* Translation Configuration Panel */}
+      <div className="admin-card mb-6">
+        <div className="admin-card-header">
+          <h2>Translation Configuration</h2>
+        </div>
+        <div className="admin-card-content">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Target Languages */}
+            <div className="space-y-3">
+              <label className="admin-label">
                 Target Languages ({translationParams.targetLanguages.length} selected)
               </label>
-              <div className="max-h-48 overflow-y-auto border border-gray-300 rounded-md p-2 bg-white">
-                <div className="grid grid-cols-1 gap-1">
-                  {AVAILABLE_LANGUAGES.map(lang => (
-                    <label key={lang.code} className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={translationParams.targetLanguages.includes(lang.code)}
-                        onChange={() => toggleTargetLanguage(lang.code)}
-                        className="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="mr-2">{lang.flag}</span>
-                      <span className="text-sm font-medium">{lang.name}</span>
-                      <span className="ml-auto text-xs text-gray-500">{lang.code.toUpperCase()}</span>
-                    </label>
+              <div className="language-grid">
+                {AVAILABLE_LANGUAGES.map(lang => (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    onClick={() => toggleTargetLanguage(lang.code)}
+                    className={`language-option ${
+                      translationParams.targetLanguages.includes(lang.code) 
+                        ? 'language-option-selected' 
+                        : 'language-option-unselected'
+                    }`}
+                  >
+                    <span className="text-lg">{lang.flag}</span>
+                    <span className="text-sm font-medium">{lang.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Configuration Options */}
+            <div className="space-y-4">
+              <div>
+                <label className="admin-label">AI Model</label>
+                <select 
+                  value={translationParams.aiModel}
+                  onChange={(e) => setTranslationParams(prev => ({ 
+                    ...prev, 
+                    aiModel: e.target.value as TranslationParams['aiModel'] 
+                  }))}
+                  className="admin-select"
+                >
+                  {AI_MODELS.map(model => (
+                    <option key={model.value} value={model.value}>
+                      {model.label} - {model.description}
+                    </option>
                   ))}
-                </div>
+                </select>
+              </div>
+
+              <div>
+                <label className="admin-label">Translation Strategy</label>
+                <select 
+                  value={translationParams.translationStrategy}
+                  onChange={(e) => setTranslationParams(prev => ({ 
+                    ...prev, 
+                    translationStrategy: e.target.value as TranslationParams['translationStrategy'] 
+                  }))}
+                  className="admin-select"
+                >
+                  {TRANSLATION_STRATEGIES.map(strategy => (
+                    <option key={strategy.value} value={strategy.value}>
+                      {strategy.label} - {strategy.description}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="admin-label">Quality Level</label>
+                <select 
+                  value={translationParams.qualityLevel}
+                  onChange={(e) => setTranslationParams(prev => ({ 
+                    ...prev, 
+                    qualityLevel: e.target.value as TranslationParams['qualityLevel'] 
+                  }))}
+                  className="admin-select"
+                >
+                  {QUALITY_LEVELS.map(quality => (
+                    <option key={quality.value} value={quality.value}>
+                      {quality.label} - {quality.description}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="preserveLayout"
+                  checked={translationParams.preserveLayout}
+                  onChange={(e) => setTranslationParams(prev => ({ 
+                    ...prev, 
+                    preserveLayout: e.target.checked 
+                  }))}
+                  className="admin-checkbox"
+                />
+                <label htmlFor="preserveLayout" className="admin-label-inline">
+                  Preserve Layout Structure
+                </label>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
+      {/* Documents Table */}
+      <div className="admin-card">
+        <div className="admin-card-header">
+          <h2>Documents Ready for Translation</h2>
+          <span className="admin-stat-badge">{documents.length} documents</span>
+        </div>
+        
         {documents.length === 0 ? (
-          <div className="text-center py-12">
-            <Languages className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No documents ready</h3>
-            <p className="text-gray-600">Process documents through content reduction first to enable translation.</p>
+          <div className="admin-empty-state">
+            <Languages className="w-12 h-12 text-gray-400 mb-4" />
+            <h3>No Documents Ready</h3>
+            <p>Complete content reduction on documents before translation.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {documents.map((doc) => (
-              <div key={doc.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-medium text-gray-900 truncate">
-                        {doc.originalName}
-                      </h3>
-                      <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(doc.status)}`}>
-                        {doc.status === 'translated' ? (
-                          <CheckCircle className="w-3 h-3" />
-                        ) : (
-                          <Globe className="w-3 h-3" />
-                        )}
-                        <span className="capitalize">
-                          {doc.status === 'reduced' ? 'Ready for Translation' : doc.status}
+          <div className="admin-table-container">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th className="w-12">
+                    <input
+                      type="checkbox"
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedDocuments(new Set(documents.map(doc => doc.id)));
+                        } else {
+                          setSelectedDocuments(new Set());
+                        }
+                      }}
+                      checked={selectedDocuments.size === documents.length && documents.length > 0}
+                      className="admin-checkbox"
+                    />
+                  </th>
+                  <th>Document</th>
+                  <th>Status</th>
+                  <th>Source Languages</th>
+                  <th>Available Translations</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {documents.map((doc) => {
+                  const statusInfo = getStatusInfo(doc);
+                  const isTranslating = translating.has(doc.id);
+                  
+                  return (
+                    <tr key={doc.id} className="admin-table-row">
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedDocuments.has(doc.id)}
+                          onChange={() => toggleDocumentSelection(doc.id)}
+                          className="admin-checkbox"
+                        />
+                      </td>
+                      <td>
+                        <div className="admin-file-info">
+                          <span className="admin-filename">{doc.originalName}</span>
+                          <span className="admin-file-size">{doc.id}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`admin-status-badge ${statusInfo.color}`}>
+                          {statusInfo.icon}
+                          {statusInfo.text}
                         </span>
-                      </div>
-                    </div>
-
-                    {/* Content Reduction Info */}
-                    {doc.contentReduction && (
-                      <div className="grid grid-cols-3 gap-4 text-sm mb-3">
-                        <div className="bg-blue-50 p-2 rounded">
-                          <div className="font-medium text-blue-900">{doc.contentReduction.totalGroups}</div>
-                          <div className="text-blue-600">Text Groups</div>
-                        </div>
-                        <div className="bg-green-50 p-2 rounded">
-                          <div className="font-medium text-green-900">{doc.contentReduction.languagesDetected.length}</div>
-                          <div className="text-green-600">Source Languages</div>
-                        </div>
-                        <div className="bg-purple-50 p-2 rounded">
-                          <div className="font-medium text-purple-900">
-                            {Object.keys(doc.translations || {}).length}
-                          </div>
-                          <div className="text-purple-600">Translations</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Source Languages */}
-                    {doc.contentReduction?.languagesDetected && (
-                      <div className="mb-3">
-                        <span className="text-sm font-medium text-gray-700 mr-2">Source Languages:</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {doc.contentReduction.languagesDetected.map(lang => (
-                            <span key={lang} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                              {lang.toUpperCase()}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Translation Status */}
-                    {doc.translations && Object.keys(doc.translations).length > 0 && (
-                      <div className="mb-3">
-                        <span className="text-sm font-medium text-gray-700 mb-2 block">Translation Progress:</span>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                          {Object.entries(doc.translations).map(([lang, translation]) => (
-                            <div key={lang} className="flex items-center justify-between p-2 border rounded">
-                              <span className="text-sm font-medium">{lang.toUpperCase()}</span>
-                              <div className="flex items-center gap-2">
-                                <span className={`px-2 py-1 rounded text-xs ${getTranslationStatusColor(translation.status)}`}>
-                                  {translation.status}
-                                </span>
-                                {translation.status === 'completed' && (
-                                  <button
-                                    onClick={() => downloadTranslation(doc.id, lang)}
-                                    className="p-1 text-blue-600 hover:text-blue-800"
-                                    title="Download translation"
-                                  >
-                                    <Download className="w-3 h-3" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 ml-4">
-                    {doc.status === 'reduced' && (
-                      <button
-                        onClick={() => startTranslation(doc.id)}
-                        disabled={translating.has(doc.id) || translationParams.targetLanguages.length === 0}
-                        className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {translating.has(doc.id) ? (
-                          <>
-                            <RefreshCw className="w-3 h-3 animate-spin" />
-                            Translating...
-                          </>
-                        ) : (
-                          <>
-                            <Play className="w-3 h-3" />
-                            Start Translation
-                          </>
+                        {doc.error && (
+                          <div className="text-xs text-red-600 mt-1">{doc.error}</div>
                         )}
-                      </button>
-                    )}
-                    
-                    {doc.status === 'translated' && (
-                      <button
-                        className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                      >
-                        <Eye className="w-3 h-3" />
-                        View Translations
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+                      </td>
+                      <td>
+                        <div className="flex flex-wrap gap-1">
+                          {doc.contentReduction?.languagesDetected?.map(lang => (
+                            <span key={lang} className="admin-language-tag">
+                              {getLanguageName(lang)}
+                            </span>
+                          )) || <span className="text-gray-500">-</span>}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex flex-wrap gap-1">
+                          {doc.translations?.length ? (
+                            doc.translations.map(translation => (
+                              <button
+                                key={translation.id}
+                                onClick={() => downloadTranslation(doc.id, translation.language)}
+                                className="admin-language-tag admin-language-tag-clickable"
+                                title="Click to download"
+                              >
+                                <Download className="w-3 h-3 mr-1" />
+                                {getLanguageName(translation.language)}
+                              </button>
+                            ))
+                          ) : (
+                            <span className="text-gray-500">None</span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="admin-actions">
+                          {doc.status === 'reduced' && (
+                            <button
+                              onClick={() => startTranslation(doc.id)}
+                              disabled={isTranslating || translationParams.targetLanguages.length === 0}
+                              className="admin-btn admin-btn-sm admin-btn-primary"
+                            >
+                              {isTranslating ? (
+                                <Loader className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Play className="w-4 h-4" />
+                              )}
+                              Translate
+                            </button>
+                          )}
+                          {doc.status === 'translated' && (
+                            <button
+                              onClick={() => startTranslation(doc.id)}
+                              disabled={isTranslating}
+                              className="admin-btn admin-btn-sm admin-btn-secondary"
+                            >
+                              {isTranslating ? (
+                                <Loader className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <RefreshCw className="w-4 h-4" />
+                              )}
+                              Re-translate
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
-      </div>
-
-      {/* Translation Info */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-green-900 mb-2">
-          Translation Process
-        </h3>
-        <div className="text-green-800 space-y-2">
-          <p><strong>1. Context Analysis:</strong> AI analyzes text groups with surrounding context</p>
-          <p><strong>2. Terminology Recognition:</strong> Preserves technical terms and proper nouns</p>
-          <p><strong>3. Cultural Adaptation:</strong> Adapts content to target language conventions</p>
-          <p><strong>4. Quality Assurance:</strong> Validates translations for consistency and accuracy</p>
-          <p><strong>5. Format Preservation:</strong> Maintains original layout and structure information</p>
-        </div>
-      </div>
-
-      {/* Translation Stats */}
-      <div className="bg-gray-50 border rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Translation Progress
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="text-center p-4 bg-white rounded border">
-            <div className="font-medium text-blue-900">{documents.filter(d => d.status === 'reduced').length}</div>
-            <div className="text-blue-600 text-sm">Ready for Translation</div>
-          </div>
-          <div className="text-center p-4 bg-white rounded border">
-            <div className="font-medium text-green-900">{documents.filter(d => d.status === 'translated').length}</div>
-            <div className="text-green-600 text-sm">Translated</div>
-          </div>
-          <div className="text-center p-4 bg-white rounded border">
-            <div className="font-medium text-purple-900">
-              {documents.reduce((acc, d) => acc + Object.keys(d.translations || {}).length, 0)}
-            </div>
-            <div className="text-purple-600 text-sm">Total Translations</div>
-          </div>
-          <div className="text-center p-4 bg-white rounded border">
-            <div className="font-medium text-orange-900">{translationParams.targetLanguages.length}</div>
-            <div className="text-orange-600 text-sm">Selected Languages</div>
-          </div>
-        </div>
       </div>
     </div>
   );

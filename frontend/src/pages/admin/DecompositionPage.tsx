@@ -69,7 +69,7 @@ export const DecompositionPage: React.FC = () => {
       await axios.post(`${API_BASE}/admin/documents/${documentId}/reduce`, {
         groupingStrategy: 'mixed',
         languageDetectionThreshold: 0.7,
-        aiModel: 'gemini-1.5-pro'
+        aiModel: 'gemini-2.5-flash'
       });
       
       // Refresh the document data

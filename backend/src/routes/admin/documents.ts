@@ -25,7 +25,11 @@ import {
   PDFAnalysisData,
   ProcessedTextBlock,
   ContentReductionGroup,
-  AILogEntry
+  AILogEntry,
+  TranslationRequest,
+  TranslationResult,
+  TranslationArtifact,
+  TranslationGenerationRequest
 } from '../../types/api';
 import { 
   performStandardContentReduction,
@@ -384,7 +388,7 @@ documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: Ne
         processedAt: new Date(),
         hasAiLogs: Boolean(aiLogsKey),
         chunksGenerated: chunksResult.totalChunks,
-        processingModel: 'gemini-1.5-pro'
+        processingModel: 'gemini-2.5-flash'
       },
       message: 'Content reduction completed successfully',
       timestamp: new Date()
@@ -536,6 +540,409 @@ documentsRouter.post('/:id/publish', async (req: Request, res: Response, next: N
 
     return res.json({ success: true, message: 'Published', timestamp: new Date(), data: { url } } as ApiResponse);
   } catch (error) { return next(error); }
+});
+
+// Helper function to build translation prompt
+function buildTranslationPrompt(
+  contentReductionData: ContentReductionResult,
+  sourceLanguage: string,
+  targetLanguage: string,
+  translationStrategy: string,
+  qualityLevel: string,
+  preserveLayout: boolean
+): string {
+  const groups = contentReductionData.groups || [];
+  
+  return `
+Translate the following text groups from ${sourceLanguage} to ${targetLanguage}.
+
+Translation Instructions:
+- Strategy: ${translationStrategy}
+- Quality Level: ${qualityLevel}
+- Preserve Layout: ${preserveLayout ? 'Yes' : 'No'}
+- Maintain the exact structure and order of text groups
+- Preserve technical terms and proper nouns when appropriate
+- Keep formatting markers and special characters intact
+
+Source Text Groups:
+${groups.map((group, index) => `
+Group ${index + 1}:
+Type: ${group.type || 'unknown'}
+Content: ${group.originalTexts?.[0]?.text || ''}
+`).join('\n')}
+
+Required Output Format (JSON):
+{
+  "translatedGroups": [
+    {
+      "id": "group_id",
+      "type": "group_type", 
+      "originalTexts": [
+        {
+          "language": "${targetLanguage}",
+          "text": "translated_text_here",
+          "bbox": [0, 0, 0, 0],
+          "confidence": 1.0,
+          "isOriginal": false
+        }
+      ],
+      "pageNumber": 1,
+      "order": 1
+    }
+  ]
+}
+
+Translate all groups and return the complete JSON structure.`;
+}
+
+// Helper function to calculate translation quality score
+function calculateQualityScore(translatedGroups: TextGroup[], sourceGroups: ContentReductionGroup[]): number {
+  if (!translatedGroups.length || !sourceGroups.length) return 0;
+  
+  const translatedCount = translatedGroups.length;
+  const sourceCount = sourceGroups.length;
+  
+  // Basic coverage score based on translated vs source groups
+  const coverageScore = Math.min(translatedCount / sourceCount, 1.0);
+  
+  // Content completeness score - check if translations have meaningful text
+  const completenessScore = translatedGroups.reduce((acc, group) => {
+    const hasContent = group.originalTexts?.some(text => text.text && text.text.trim().length > 0);
+    return acc + (hasContent ? 1 : 0);
+  }, 0) / translatedCount;
+  
+  return Math.round((coverageScore * 0.6 + completenessScore * 0.4) * 100) / 100;
+}
+
+// Helper function to support legacy content reduction compatibility
+function legacyContentReductionSupport(documentId: string) {
+  console.log(`Legacy content reduction support for document ${documentId}`);
+  // This is a placeholder for backward compatibility
+}
+
+// Document Translation - AI-powered multilingual translation
+documentsRouter.post('/:id/translate', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id: documentId } = req.params;
+    const {
+      targetLanguages = [],
+      sourceLanguage,
+      preserveLayout = true,
+      translationStrategy = 'contextual',
+      qualityLevel = 'balanced',
+      aiModel = 'gemini-2.5-flash'
+    }: TranslationGenerationRequest & { 
+      translationStrategy?: string;
+      qualityLevel?: string;
+      aiModel?: string;
+    } = req.body;
+
+    const db = getDb();
+    const storage = getStorage();
+    const context = getAppContext();
+
+    // Get document from database
+    const document = await db.collection('documents').findOne({ id: documentId });
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        error: 'Document not found',
+        timestamp: new Date()
+      } as ApiResponse);
+    }
+
+    // Check if document has content reduction completed
+    if (document.status !== 'reduced' && document.status !== 'translated') {
+      return res.status(400).json({
+        success: false,
+        error: `Document must complete content reduction before translation. Current status: ${document.status}`,
+        timestamp: new Date()
+      } as ApiResponse);
+    }
+
+    // Validate target languages
+    if (!targetLanguages || targetLanguages.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'At least one target language is required',
+        timestamp: new Date()
+      } as ApiResponse);
+    }
+
+    // Load content reduction result
+    let contentReductionData: ContentReductionResult;
+    try {
+      if (!document.storage?.reducedJson) {
+        throw new Error('Content reduction data not found');
+      }
+      const reductionBuffer = await storage.downloadPrivate(document.storage.reducedJson);
+      contentReductionData = JSON.parse(reductionBuffer.toString('utf8'));
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to load content reduction data',
+        timestamp: new Date()
+      } as ApiResponse);
+    }
+
+    // Update document status to translating
+    await db.collection('documents').updateOne(
+      { id: documentId },
+      { 
+        $set: { 
+          status: 'processing',
+          processingStage: 'translation',
+          processedAt: new Date()
+        } 
+      }
+    );
+
+    // Initialize AI agent
+    const aiAgent = context?.aiAgent;
+    if (!aiAgent) {
+      throw new Error('AI agent not available');
+    }
+
+    const translationResults: TranslationResult[] = [];
+    const translationArtifacts: TranslationArtifact[] = [];
+
+    // Process each target language
+    for (const targetLang of targetLanguages) {
+      try {
+        console.log(`Starting translation to ${targetLang} for document ${documentId}`);
+
+        // Determine source language (use most common detected language if not specified)
+        const detectedSourceLang = sourceLanguage || 
+          (contentReductionData.languagesDetected && contentReductionData.languagesDetected.length > 0 
+            ? contentReductionData.languagesDetected[0]
+            : 'auto');
+
+        // Skip if target language is the same as source
+        if (targetLang === detectedSourceLang) {
+          console.log(`Skipping translation to ${targetLang} (same as source language)`);
+          continue;
+        }
+
+        // Prepare translation context
+        const contextPrompt = buildTranslationPrompt(
+          contentReductionData,
+          detectedSourceLang,
+          targetLang,
+          translationStrategy,
+          qualityLevel,
+          preserveLayout
+        );
+
+        // Perform AI translation
+        const startTime = Date.now();
+        const translationResponse = await aiAgent.generateContent(contextPrompt, {
+          model: aiModel,
+          maxOutputTokens: 8000,
+          temperature: qualityLevel === 'creative' ? 0.7 : qualityLevel === 'high' ? 0.3 : 0.5
+        });
+
+        const processingTime = Date.now() - startTime;
+
+        // Parse and validate translation result
+        let translatedGroups: TextGroup[];
+        try {
+          const parsed = JSON.parse(translationResponse.text);
+          translatedGroups = parsed.translatedGroups || [];
+          
+          // Validate translation structure
+          if (!Array.isArray(translatedGroups)) {
+            throw new Error('Invalid translation format: translatedGroups must be an array');
+          }
+        } catch (parseError) {
+          console.error('Failed to parse translation result:', parseError);
+          throw new Error(`Translation parsing failed for ${targetLang}: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+        }
+
+        // Create translation result
+        const translationResult: TranslationResult = {
+          translatedGroups,
+          targetLanguage: targetLang,
+          sourceLanguage: detectedSourceLang,
+          layoutReference: detectedSourceLang,
+          textReference: detectedSourceLang,
+          generatedAt: new Date(),
+          metadata: {
+            aiModel,
+            processingTime,
+            contextLanguages: contentReductionData.languagesDetected || [],
+            qualityScore: calculateQualityScore(translatedGroups, contentReductionData.groups || [])
+          }
+        };
+
+        translationResults.push(translationResult);
+
+        // Save translation artifact to storage
+        const artifactKey = `documents/${documentId}/translations/${targetLang}_${Date.now()}.json`;
+        const translationBuffer = Buffer.from(JSON.stringify(translationResult, null, 2));
+        const artifactUri = await storage.uploadPrivate({
+          key: artifactKey,
+          contentType: 'application/json',
+          body: translationBuffer
+        });
+
+        // Create translation artifact record
+        const translationArtifact: TranslationArtifact = {
+          id: uuidv4(),
+          name: `translation_${targetLang}.json`,
+          contentType: 'application/json',
+          size: translationBuffer.length,
+          uri: artifactUri,
+          uploadedAt: new Date(),
+          language: targetLang,
+          sourceLayoutLang: detectedSourceLang,
+          sourceTextLang: detectedSourceLang,
+          version: 'generated',
+          metadata: {
+            aiModel,
+            translationStrategy,
+            qualityLevel,
+            processingTime,
+            groupCount: translatedGroups.length
+          }
+        };
+
+        translationArtifacts.push(translationArtifact);
+
+        console.log(`Translation to ${targetLang} completed in ${processingTime}ms`);
+
+      } catch (error) {
+        console.error(`Translation to ${targetLang} failed:`, error);
+        // Continue with other languages even if one fails
+      }
+    }
+
+    // Update document with translation results
+    const updateData: any = {
+      $set: {
+        status: translationArtifacts.length > 0 ? 'translated' : 'failed',
+        processedAt: new Date()
+      }
+    };
+
+    if (translationArtifacts.length > 0) {
+      updateData.$push = {
+        translations: { $each: translationArtifacts }
+      };
+      updateData.$unset = { error: "" }; // Remove error field if translations succeeded
+    } else {
+      updateData.$set.error = 'All translations failed';
+    }
+
+    await db.collection('documents').updateOne({ id: documentId }, updateData);
+
+    return res.json({
+      success: true,
+      message: `Translation completed for ${translationArtifacts.length} languages`,
+      data: {
+        translationsGenerated: translationArtifacts.length,
+        targetLanguages: translationArtifacts.map(ta => ta.language),
+        translationIds: translationArtifacts.map(ta => ta.id)
+      },
+      timestamp: new Date()
+    } as ApiResponse);
+
+  } catch (error) {
+    // Update document status to failed
+    try {
+      const db = getDb();
+      await db.collection('documents').updateOne(
+        { id: req.params.id },
+        { 
+          $set: { 
+            status: 'failed', 
+            error: error instanceof Error ? error.message : 'Translation failed',
+            processedAt: new Date() 
+          } 
+        }
+      );
+    } catch {}
+    return next(error);
+  }
+});
+
+// Get translation status and results for a document
+documentsRouter.get('/:id/translations', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id: documentId } = req.params;
+    const db = getDb();
+
+    const document = await db.collection('documents').findOne({ id: documentId });
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        error: 'Document not found',
+        timestamp: new Date()
+      } as ApiResponse);
+    }
+
+    const translations = document.translations || [];
+    
+    return res.json({
+      success: true,
+      data: {
+        documentId,
+        status: document.status,
+        translationsCount: translations.length,
+        translations: translations.map((t: TranslationArtifact) => ({
+          id: t.id,
+          language: t.language,
+          name: t.name,
+          size: t.size,
+          uploadedAt: t.uploadedAt,
+          version: t.version,
+          metadata: t.metadata
+        }))
+      },
+      timestamp: new Date()
+    } as ApiResponse);
+
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// Download translation result for a specific language
+documentsRouter.get('/:id/translations/:language/download', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id: documentId, language } = req.params;
+    const db = getDb();
+    const storage = getStorage();
+
+    const document = await db.collection('documents').findOne({ id: documentId });
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        error: 'Document not found',
+        timestamp: new Date()
+      } as ApiResponse);
+    }
+
+    const translation = (document.translations || []).find((t: TranslationArtifact) => t.language === language);
+    if (!translation) {
+      return res.status(404).json({
+        success: false,
+        error: 'Translation not found for the specified language',
+        timestamp: new Date()
+      } as ApiResponse);
+    }
+
+    // Download translation from storage
+    const translationBuffer = await storage.downloadPrivate(translation.uri);
+    
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${translation.name}"`);
+    res.setHeader('Content-Length', translation.size);
+    
+    return res.send(translationBuffer);
+
+  } catch (error) {
+    return next(error);
+  }
 });
 
 // Helper function to perform AI-powered content reduction (legacy - kept for compatibility)
