@@ -66,7 +66,6 @@ export const UploadPage: React.FC = () => {
     
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      console.log('Files selected:', files.map(f => ({ name: f.name, size: f.size, type: f.type })));
       handleFiles(files);
       // Reset input value to allow selecting the same file again
       e.target.value = '';
@@ -101,8 +100,6 @@ export const UploadPage: React.FC = () => {
   };
 
   const uploadFile = async (file: File) => {
-    console.log('Uploading file:', { name: file.name, size: file.size, type: file.type });
-    
     const uploadProgress: UploadProgress = {
       filename: file.name,
       progress: 0,
@@ -114,8 +111,6 @@ export const UploadPage: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
-      console.log('FormData created, file appended:', file.name);
 
       const response = await axios.post(`${API_BASE}/admin/documents/upload`, formData, {
         headers: {
@@ -124,7 +119,6 @@ export const UploadPage: React.FC = () => {
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
             const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            console.log(`Upload progress for ${file.name}: ${progress}%`);
             setUploads(prev => prev.map(upload => 
               upload.filename === file.name && upload.status === 'uploading'
                 ? { ...upload, progress }
@@ -133,8 +127,6 @@ export const UploadPage: React.FC = () => {
           }
         }
       });
-
-      console.log('Upload response:', response.data);
 
       if (response.data.success) {
         setUploads(prev => prev.map(upload => 
@@ -153,8 +145,6 @@ export const UploadPage: React.FC = () => {
       }
 
     } catch (error: any) {
-      console.error('Upload error:', error);
-      console.error('Error response:', error.response?.data);
       setUploads(prev => prev.map(upload => 
         upload.filename === file.name
           ? { 
@@ -246,11 +236,15 @@ export const UploadPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Upload className="w-6 h-6 text-blue-600" />
+        <h1 className="text-2xl font-bold text-gray-900">PDF Document Upload</h1>
+      </div>
+
+      {/* Upload Section */}
       <div className="bg-white rounded-lg border p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          PDF Document Upload
-        </h2>
         <p className="text-gray-600 mb-6">
           Upload PDF documents to extract content, images, and layout information. 
           The system will convert PDFs to structured data for multilingual processing.
@@ -294,52 +288,74 @@ export const UploadPage: React.FC = () => {
 
       {/* Upload Progress */}
       {uploads.length > 0 && (
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Upload Progress
-          </h3>
-          <div className="space-y-3">
-            {uploads.map((upload, index) => (
-              <div key={`${upload.filename}-${index}`} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                {getStatusIcon(upload.status)}
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-gray-900 truncate">
-                    {upload.filename}
-                  </h4>
-                  <p className="text-sm text-gray-600">
-                    {getStatusMessage(upload)}
-                  </p>
-                  {upload.status === 'uploading' && (
-                    <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                      <div 
-                        className="bg-blue-500 h-2 rounded-full transition-all"
-                        style={{ width: `${upload.progress}%` }}
-                      />
-                    </div>
-                  )}
+        <div className="bg-white rounded-lg border overflow-hidden">
+          <div className="p-4 border-b bg-gray-50">
+            <h3 className="text-lg font-medium text-gray-900">Upload Progress</h3>
+          </div>
+          <div className="p-4">
+            <div className="space-y-3">
+              {uploads.map((upload, index) => (
+                <div key={`${upload.filename}-${index}`} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  {getStatusIcon(upload.status)}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-gray-900 truncate">
+                      {upload.filename}
+                    </h4>
+                    <p className="text-sm text-gray-600">
+                      {getStatusMessage(upload)}
+                    </p>
+                    {upload.status === 'uploading' && (
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div 
+                          className="bg-blue-500 h-2 rounded-full transition-all"
+                          style={{ width: `${upload.progress}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => removeUpload(upload.filename)}
+                    className="p-1 text-gray-400 hover:text-red-500"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => removeUpload(upload.filename)}
-                  className="p-1 text-gray-400 hover:text-red-500"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}
 
       {/* Processing Instructions */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-blue-900 mb-2">
+        <h3 className="text-lg font-semibold text-blue-900 mb-3">
           Processing Pipeline
         </h3>
         <div className="text-blue-800 space-y-2">
-          <p>1. <strong>PDF Upload:</strong> Original PDF is stored and queued for processing</p>
-          <p>2. <strong>Content Extraction:</strong> PDF is converted to ZIP with extracted text, images, and layout data</p>
-          <p>3. <strong>Structure Analysis:</strong> Content is analyzed for layout, fonts, and positioning</p>
-          <p>4. <strong>Ready for Reduction:</strong> Once processed, document is ready for content grouping and language detection</p>
+          <div className="flex items-start gap-2">
+            <span className="font-semibold">1.</span>
+            <div>
+              <strong>PDF Upload:</strong> Original PDF is stored and queued for processing
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="font-semibold">2.</span>
+            <div>
+              <strong>Content Extraction:</strong> PDF is converted to ZIP with extracted text, images, and layout data
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="font-semibold">3.</span>
+            <div>
+              <strong>Structure Analysis:</strong> Content is analyzed for layout, fonts, and positioning
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="font-semibold">4.</span>
+            <div>
+              <strong>Ready for Reduction:</strong> Once processed, document is ready for content grouping and language detection
+            </div>
+          </div>
         </div>
       </div>
     </div>
