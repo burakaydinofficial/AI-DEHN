@@ -101,7 +101,41 @@ export function extractTextBlocks(analysisData: PDFAnalysisData): ProcessedTextB
 /**
  * Standard grouping algorithm optimized for multilingual PDFs
  */
-export async function performStandardGrouping(
+export // Helper function to extract JSON from AI responses that might be wrapped in markdown
+function extractJsonFromResponse(responseText: string): any {
+  try {
+    // First, try to parse as direct JSON
+    return JSON.parse(responseText);
+  } catch {
+    // If that fails, look for JSON wrapped in code blocks
+    const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/i;
+    const match = responseText.match(codeBlockRegex);
+    
+    if (match && match[1]) {
+      try {
+        return JSON.parse(match[1].trim());
+      } catch (error) {
+        throw new Error(`Failed to parse JSON from code block: ${error}`);
+      }
+    }
+    
+    // If no code blocks found, try to find JSON-like content
+    const jsonRegex = /\{[\s\S]*\}/;
+    const jsonMatch = responseText.match(jsonRegex);
+    
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[0]);
+      } catch (error) {
+        throw new Error(`Failed to parse extracted JSON: ${error}`);
+      }
+    }
+    
+    throw new Error(`No valid JSON found in response: ${responseText.substring(0, 200)}...`);
+  }
+}
+
+async function performStandardGrouping(
   textBlocks: ProcessedTextBlock[],
   aiAgent: any,
   aiLogs: AILogEntry[]
@@ -130,7 +164,7 @@ export async function performStandardGrouping(
       });
     }
 
-    const result = JSON.parse(response.text);
+    const result = extractJsonFromResponse(response.text);
     const groupsData = result.groups || [];
     
     return groupsData.map((group: any, idx: number) => ({

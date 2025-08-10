@@ -71,8 +71,10 @@ export const ContentReductionPage: React.FC = () => {
   const [processing, setProcessing] = useState<Set<string>>(new Set());
   const [viewingDetails, setViewingDetails] = useState<string | null>(null);
   const [reductionDetails, setReductionDetails] = useState<DetailedReductionResult | null>(null);
+  const [loadingReductionDetails, setLoadingReductionDetails] = useState(false);
   const [aiLogs, setAiLogs] = useState<AILogEntry[]>([]);
   const [showAiLogs, setShowAiLogs] = useState(false);
+  const [loadingAiLogs, setLoadingAiLogs] = useState(false);
 
   useEffect(() => {
     fetchDocuments();
@@ -97,8 +99,16 @@ export const ContentReductionPage: React.FC = () => {
     try {
       setProcessing(prev => new Set(prev).add(documentId));
       
+      // Log the request details for debugging
+      const url = `${API_BASE}/admin/documents/${documentId}/reduce`;
+      console.log('Starting content reduction:', {
+        documentId,
+        url,
+        API_BASE
+      });
+      
       // Use our fixed backend processor - no user configuration needed
-      const response = await axios.post(`${API_BASE}/admin/documents/${documentId}/reduce`);
+      const response = await axios.post(url);
 
       if (response.data.success) {
         // Refresh documents to show updated status
@@ -114,7 +124,33 @@ Chunks generated: ${result.chunksGenerated}`);
       }
     } catch (error: any) {
       console.error('Content reduction failed:', error);
-      alert(error.response?.data?.message || error.response?.data?.error || 'Content reduction failed');
+      console.error('Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          baseURL: error.config?.baseURL
+        }
+      });
+      
+      // More detailed error message
+      let errorMessage = 'Content reduction failed';
+      if (error.response) {
+        // Server responded with error status
+        const status = error.response.status;
+        const data = error.response.data;
+        errorMessage = `Request failed (${status}): ${data?.message || data?.error || error.response.statusText}`;
+      } else if (error.request) {
+        // Request was made but no response received
+        errorMessage = 'No response from server. Check if backend is running.';
+      } else {
+        // Something else happened
+        errorMessage = `Request error: ${error.message}`;
+      }
+      
+      alert(errorMessage);
     } finally {
       setProcessing(prev => {
         const newSet = new Set(prev);
@@ -127,40 +163,78 @@ Chunks generated: ${result.chunksGenerated}`);
   const viewReductionDetails = async (documentId: string) => {
     try {
       setViewingDetails(documentId);
+      setReductionDetails(null); // Clear any previous data
+      setLoadingReductionDetails(true);
+      
+      console.log('Loading reduction details for document:', documentId);
       const response = await axios.get(`${API_BASE}/admin/documents/${documentId}/reduction-details`);
+      
+      console.log('Reduction details response:', response.data);
       
       if (response.data.success) {
         setReductionDetails(response.data.data);
+      } else {
+        throw new Error(response.data.error || 'Failed to load reduction details');
       }
     } catch (error: any) {
       console.error('Failed to load reduction details:', error);
-      alert('Failed to load reduction details');
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      
+      alert(`Failed to load reduction details: ${error.response?.data?.error || error.message}`);
       setViewingDetails(null);
+      setReductionDetails(null);
+    } finally {
+      setLoadingReductionDetails(false);
     }
   };
 
   const viewAiLogs = async (documentId: string) => {
     try {
+      // Clear previous logs and show loading state
+      setAiLogs([]);
+      setShowAiLogs(true);
+      setLoadingAiLogs(true);
+      
+      console.log('Loading AI logs for document:', documentId);
       const response = await axios.get(`${API_BASE}/admin/documents/${documentId}/ai-logs`);
+      
+      console.log('AI logs response:', response.data);
       
       if (response.data.success) {
         setAiLogs(response.data.data);
-        setShowAiLogs(true);
+      } else {
+        throw new Error(response.data.error || 'Failed to load AI logs');
       }
     } catch (error: any) {
       console.error('Failed to load AI logs:', error);
-      alert('Failed to load AI logs');
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      
+      alert(`Failed to load AI logs: ${error.response?.data?.error || error.message}`);
+      setShowAiLogs(false);
+      setAiLogs([]);
+    } finally {
+      setLoadingAiLogs(false);
     }
   };
 
   const closeDetailsView = () => {
     setViewingDetails(null);
     setReductionDetails(null);
+    setLoadingReductionDetails(false);
   };
 
   const closeAiLogsView = () => {
     setShowAiLogs(false);
     setAiLogs([]);
+    setLoadingAiLogs(false);
   };
 
   const getStatusBadgeClass = (status: string) => {
@@ -218,22 +292,6 @@ Chunks generated: ${result.chunksGenerated}`);
           AI-powered content reduction using Gemini 1.5 Pro. 
           Automatically detects languages, groups content, and prepares documents for translation.
         </p>
-
-        {/* Configuration Info */}
-        <div className="admin-info-card">
-          <h3>AI Configuration</h3>
-          <div className="admin-config-info">
-            <div className="config-item">
-              <strong>Model:</strong> Gemini 1.5 Pro
-            </div>
-            <div className="config-item">
-              <strong>Strategy:</strong> Mixed content grouping (titles + paragraphs)
-            </div>
-            <div className="config-item">
-              <strong>Language Detection:</strong> 70% confidence threshold
-            </div>
-          </div>
-        </div>
 
         {/* Document List */}
         {documents.length === 0 ? (
@@ -419,7 +477,7 @@ Chunks generated: ${result.chunksGenerated}`);
       </div>
 
       {/* Reduction Details Modal */}
-      {viewingDetails && reductionDetails && (
+      {viewingDetails && (
         <div className="admin-modal-overlay">
           <div className="admin-modal large">
             <div className="admin-modal-header">
@@ -430,92 +488,109 @@ Chunks generated: ${result.chunksGenerated}`);
             </div>
             
             <div className="admin-modal-content">
-              {/* Summary */}
-              <div className="reduction-summary">
-                <div className="summary-stats">
-                  <div className="summary-stat">
-                    <div className="stat-value">{reductionDetails.totalGroups}</div>
-                    <div className="stat-label">Total Groups</div>
-                  </div>
-                  <div className="summary-stat">
-                    <div className="stat-value">{reductionDetails.languagesDetected.length}</div>
-                    <div className="stat-label">Languages</div>
-                  </div>
-                  <div className="summary-stat">
-                    <div className="stat-value">{reductionDetails.chunksGenerated}</div>
-                    <div className="stat-label">Chunks Generated</div>
-                  </div>
-                  <div className="summary-stat">
-                    <div className="stat-value">{Math.round(reductionDetails.statistics.averageConfidence * 100)}%</div>
-                    <div className="stat-label">Avg Confidence</div>
+              {loadingReductionDetails ? (
+                <div className="admin-loading">
+                  <div className="admin-loading-content">
+                    <RefreshCw className="admin-loading-spinner" />
+                    <span>Loading reduction details...</span>
                   </div>
                 </div>
-                
-                <div className="processing-info">
-                  <p><strong>Model:</strong> {reductionDetails.processingModel}</p>
-                  <p><strong>Processed:</strong> {new Date(reductionDetails.processedAt).toLocaleString()}</p>
-                </div>
-              </div>
-
-              {/* Language Distribution */}
-              <div className="section">
-                <h4>Language Distribution</h4>
-                <div className="language-distribution">
-                  {Object.entries(reductionDetails.statistics.languageDistribution).map(([lang, count]) => (
-                    <div key={lang} className="language-bar">
-                      <span className="language-name">{lang.toUpperCase()}</span>
-                      <div className="bar">
-                        <div 
-                          className="bar-fill"
-                          style={{ 
-                            width: `${(count / reductionDetails.totalGroups) * 100}%`
-                          }}
-                        />
+              ) : reductionDetails ? (
+                <>
+                  {/* Summary */}
+                  <div className="reduction-summary">
+                    <div className="summary-stats">
+                      <div className="summary-stat">
+                        <div className="stat-value">{reductionDetails.totalGroups}</div>
+                        <div className="stat-label">Total Groups</div>
                       </div>
-                      <span className="language-count">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Content Type Distribution */}
-              <div className="section">
-                <h4>Content Type Distribution</h4>
-                <div className="type-distribution">
-                  {Object.entries(reductionDetails.statistics.typeDistribution).map(([type, count]) => (
-                    <div key={type} className="type-item">
-                      <span className="type-name">{type}</span>
-                      <span className="type-count">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Groups */}
-              <div className="section">
-                <h4>Content Groups ({reductionDetails.groups.length})</h4>
-                <div className="groups-list">
-                  {reductionDetails.groups.slice(0, 10).map((group) => (
-                    <div key={group.id} className="group-item">
-                      <div className="group-header">
-                        <span className="group-type">{group.type}</span>
-                        <span className="group-lang">{group.detectedLanguage.toUpperCase()}</span>
-                        <span className="group-confidence">{Math.round(group.confidence * 100)}%</span>
-                        <span className="group-page">Page {group.page}</span>
+                      <div className="summary-stat">
+                        <div className="stat-value">{reductionDetails.languagesDetected.length}</div>
+                        <div className="stat-label">Languages</div>
                       </div>
-                      <div className="group-text">
-                        {group.originalText.substring(0, 200)}
-                        {group.originalText.length > 200 && '...'}
+                      <div className="summary-stat">
+                        <div className="stat-value">{reductionDetails.chunksGenerated}</div>
+                        <div className="stat-label">Chunks Generated</div>
+                      </div>
+                      <div className="summary-stat">
+                        <div className="stat-value">{Math.round(reductionDetails.statistics.averageConfidence * 100)}%</div>
+                        <div className="stat-label">Avg Confidence</div>
                       </div>
                     </div>
-                  ))}
-                  {reductionDetails.groups.length > 10 && (
-                    <div className="groups-more">
-                      +{reductionDetails.groups.length - 10} more groups
+                    
+                    <div className="processing-info">
+                      <p><strong>Model:</strong> {reductionDetails.processingModel}</p>
+                      <p><strong>Processed:</strong> {new Date(reductionDetails.processedAt).toLocaleString()}</p>
                     </div>
-                  )}
+                  </div>
+
+                  {/* Language Distribution */}
+                  <div className="section">
+                    <h4>Language Distribution</h4>
+                    <div className="language-distribution">
+                      {Object.entries(reductionDetails.statistics.languageDistribution).map(([lang, count]) => (
+                        <div key={lang} className="language-bar">
+                          <span className="language-name">{lang.toUpperCase()}</span>
+                          <div className="bar">
+                            <div 
+                              className="bar-fill"
+                              style={{ 
+                                width: `${(count / reductionDetails.totalGroups) * 100}%`
+                              }}
+                            />
+                          </div>
+                          <span className="language-count">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Content Type Distribution */}
+                  <div className="section">
+                    <h4>Content Type Distribution</h4>
+                    <div className="type-distribution">
+                      {Object.entries(reductionDetails.statistics.typeDistribution).map(([type, count]) => (
+                        <div key={type} className="type-item">
+                          <span className="type-name">{type}</span>
+                          <span className="type-count">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Groups */}
+                  <div className="section">
+                    <h4>Content Groups ({reductionDetails.groups.length})</h4>
+                    <div className="groups-list">
+                      {reductionDetails.groups.slice(0, 10).map((group) => (
+                        <div key={group.id} className="group-item">
+                          <div className="group-header">
+                            <span className="group-type">{group.type}</span>
+                            <span className="group-lang">{group.detectedLanguage.toUpperCase()}</span>
+                            <span className="group-confidence">{Math.round(group.confidence * 100)}%</span>
+                            <span className="group-page">Page {group.page}</span>
+                          </div>
+                          <div className="group-text">
+                            {group.originalText.substring(0, 200)}
+                            {group.originalText.length > 200 && '...'}
+                          </div>
+                        </div>
+                      ))}
+                      {reductionDetails.groups.length > 10 && (
+                        <div className="groups-more">
+                          +{reductionDetails.groups.length - 10} more groups
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="admin-empty-state">
+                  <FileText className="admin-empty-icon" />
+                  <h3>No details available</h3>
+                  <p>Failed to load reduction details for this document.</p>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -533,45 +608,60 @@ Chunks generated: ${result.chunksGenerated}`);
             </div>
             
             <div className="admin-modal-content">
-              <div className="ai-logs-list">
-                {aiLogs.map((log, index) => (
-                  <div key={index} className="ai-log-entry">
-                    <div className="log-header">
-                      <span className="log-operation">{log.phase}</span>
-                      <span className="log-model">{log.model || 'Unknown'}</span>
-                      <span className="log-timestamp">
-                        {new Date(log.timestamp).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    <div className="log-content">
-                      {log.prompt && (
-                        <div className="log-input">
-                          <h5>Prompt:</h5>
-                          <pre>{log.prompt.substring(0, 500)}{log.prompt.length > 500 && '...'}</pre>
-                        </div>
-                      )}
-                      {log.response && (
-                        <div className="log-output">
-                          <h5>Response:</h5>
-                          <pre>{log.response.substring(0, 500)}{log.response.length > 500 && '...'}</pre>
-                        </div>
-                      )}
-                      {log.error && (
-                        <div className="log-error">
-                          <h5>Error:</h5>
-                          <pre>{log.error}</pre>
-                        </div>
-                      )}
-                      {log.fallback && (
-                        <div className="log-fallback">
-                          <h5>Fallback Used:</h5>
-                          <pre>{log.fallback}</pre>
-                        </div>
-                      )}
-                    </div>
+              {loadingAiLogs ? (
+                <div className="admin-loading">
+                  <div className="admin-loading-content">
+                    <RefreshCw className="admin-loading-spinner" />
+                    <span>Loading AI logs...</span>
                   </div>
-                ))}
-              </div>
+                </div>
+              ) : aiLogs.length > 0 ? (
+                <div className="ai-logs-list">
+                  {aiLogs.map((log, index) => (
+                    <div key={index} className="ai-log-entry">
+                      <div className="log-header">
+                        <span className="log-operation">{log.phase}</span>
+                        <span className="log-model">{log.model || 'Unknown'}</span>
+                        <span className="log-timestamp">
+                          {new Date(log.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <div className="log-content">
+                        {log.prompt && (
+                          <div className="log-input">
+                            <h5>Prompt:</h5>
+                            <pre>{log.prompt.substring(0, 500)}{log.prompt.length > 500 && '...'}</pre>
+                          </div>
+                        )}
+                        {log.response && (
+                          <div className="log-output">
+                            <h5>Response:</h5>
+                            <pre>{log.response.substring(0, 500)}{log.response.length > 500 && '...'}</pre>
+                          </div>
+                        )}
+                        {log.error && (
+                          <div className="log-error">
+                            <h5>Error:</h5>
+                            <pre>{log.error}</pre>
+                          </div>
+                        )}
+                        {log.fallback && (
+                          <div className="log-fallback">
+                            <h5>Fallback Used:</h5>
+                            <pre>{log.fallback}</pre>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="admin-empty-state">
+                  <Activity className="admin-empty-icon" />
+                  <h3>No AI logs available</h3>
+                  <p>No processing logs found for this document.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
