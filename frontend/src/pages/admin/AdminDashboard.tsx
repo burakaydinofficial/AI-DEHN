@@ -4,6 +4,7 @@ import { UploadPage } from './UploadPage';
 import { ProcessingStatusPage } from './ProcessingStatusPage';
 import { ContentReductionPage } from './ContentReductionPage';
 import { TranslationPage } from './TranslationPage';
+import { ProductsPage } from './ProductsPage';
 import { PublishingPage } from './PublishingPage';
 import { InventoryPage } from './InventoryPage';
 import { StatusOverviewPage } from './StatusOverviewPage';
@@ -27,6 +28,8 @@ export const AdminDashboard: React.FC = () => {
         return <ContentReductionPage />;
       case ADMIN_TABS.translation:
         return <TranslationPage />;
+      case ADMIN_TABS.products:
+        return <ProductsPage />;
       case ADMIN_TABS.publishing:
         return <PublishingPage />;
       case ADMIN_TABS.inventory:
