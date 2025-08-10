@@ -141,29 +141,29 @@ export const TranslationPage: React.FC = () => {
     }));
   };
 
-  const getStatusBadgeClass = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'reduced':
-        return 'ready';
+        return 'border-blue-200 bg-blue-50 text-blue-700';
       case 'translated':
-        return 'success';
+        return 'border-green-200 bg-green-50 text-green-700';
       case 'failed':
-        return 'error';
+        return 'border-red-200 bg-red-50 text-red-700';
       default:
-        return 'default';
+        return 'border-gray-200 bg-gray-50 text-gray-700';
     }
   };
 
-  const getTranslationStatusClass = (status: string) => {
+  const getTranslationStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'warning';
+        return 'bg-yellow-100 text-yellow-800';
       case 'completed':
-        return 'success';
+        return 'bg-green-100 text-green-800';
       case 'failed':
-        return 'error';
+        return 'bg-red-100 text-red-800';
       default:
-        return 'default';
+        return 'bg-gray-100 text-gray-800';
     }
   };
 

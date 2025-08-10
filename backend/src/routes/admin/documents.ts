@@ -275,97 +275,6 @@ documentsRouter.post('/:id/translations', upload.single('file'), async (req: Req
   } catch (error) { return next(error); }
 });
 
-// Reduce content (detect repeated components across languages)
-documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const db = getDb();
-    const storage = getStorage();
-    const id = req.params.id;
-    const doc = await db.collection('documents').findOne({ id });
-    if (!doc?.storage?.analysisKey) return res.status(400).json({ success: false, message: 'Analysis JSON not found', timestamp: new Date() } as ApiResponse);
-
-    // Download analysis JSON
-    const analysisBuf = await storage.downloadPrivate(doc.storage.analysisKey);
-    const analysis = JSON.parse(analysisBuf.toString('utf-8')) as PDFProcessingResult;
-
-    // Stub: perform grouping and detection. In future, use LLM.
-    const reduced = {
-      success: true,
-      groups: [],
-      languages: [],
-      notes: 'Reduced content placeholder. Implement grouping by titles/paragraphs and language detection.'
-    };
-
-    const reducedKey = `documents/${id}/processed/${id}_reduced.json`;
-    const reducedUri = await storage.uploadPrivate({ key: reducedKey, contentType: 'application/json', body: Buffer.from(JSON.stringify(reduced)) });
-
-    await db.collection('documents').updateOne({ id }, { $set: { 'storage.reducedJson': reducedUri, 'storage.reducedKey': reducedKey } });
-
-    return res.json({ success: true, message: 'Reduced content created', timestamp: new Date(), data: { key: reducedKey } } as ApiResponse);
-  } catch (error) { return next(error); }
-});
-
-// Generate chunks of markdown with metadata
-documentsRouter.post('/:id/chunks', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const db = getDb();
-    const storage = getStorage();
-    const id = req.params.id;
-    const doc = await db.collection('documents').findOne({ id });
-    const key = doc?.storage?.reducedKey || doc?.storage?.analysisKey;
-    if (!key) return res.status(400).json({ success: false, message: 'No source JSON to chunk', timestamp: new Date() } as ApiResponse);
-
-    const srcBuf = await storage.downloadPrivate(key);
-    const src = JSON.parse(srcBuf.toString('utf-8'));
-
-    // Stub: produce simple chunk list preserving layout hints
-    const chunks = {
-      success: true,
-      chunks: [
-        { id: 'c1', lang: 'unknown', type: 'paragraph', markdown: '...', meta: { page: 1, bbox: [0,0,0,0] } }
-      ]
-    };
-
-    const chunksKey = `documents/${id}/processed/${id}_chunks.json`;
-    const chunksUri = await storage.uploadPrivate({ key: chunksKey, contentType: 'application/json', body: Buffer.from(JSON.stringify(chunks)) });
-
-    await db.collection('documents').updateOne({ id }, { $set: { 'storage.chunksJson': chunksUri, 'storage.chunksKey': chunksKey } });
-
-    return res.json({ success: true, message: 'Chunks generated', timestamp: new Date(), data: { key: chunksKey } } as ApiResponse);
-  } catch (error) { return next(error); }
-});
-
-// Generate missing language using LLM (placeholder)
-documentsRouter.post('/:id/generate-translation', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { targetLanguage, layoutRefLang, textRefLang } = req.body || {};
-    if (!targetLanguage) return res.status(400).json({ success: false, message: 'targetLanguage is required', timestamp: new Date() } as ApiResponse);
-
-    const db = getDb();
-    const storage = getStorage();
-    const id = req.params.id;
-    const doc = await db.collection('documents').findOne({ id });
-    const sourceKey = doc?.storage?.chunksKey || doc?.storage?.reducedKey || doc?.storage?.analysisKey;
-    if (!sourceKey) return res.status(400).json({ success: false, message: 'No source for translation', timestamp: new Date() } as ApiResponse);
-
-    // Download source
-    const srcBuf = await storage.downloadPrivate(sourceKey);
-    const src = JSON.parse(srcBuf.toString('utf-8'));
-
-    // Stub: create a dummy translated artifact
-    const translated = { success: true, language: targetLanguage, layoutRefLang, textRefLang, content: [], note: 'LLM translation placeholder' };
-    const tKey = `documents/${id}/translations/${targetLanguage}/${Date.now()}_translation.json`;
-    const tUri = await storage.uploadPrivate({ key: tKey, contentType: 'application/json', body: Buffer.from(JSON.stringify(translated)) });
-
-    await (db.collection('documents') as any).updateOne(
-      { id },
-      { $push: { translations: { name: `${targetLanguage}.json`, contentType: 'application/json', size: Buffer.byteLength(JSON.stringify(translated)), uri: tUri, uploadedAt: new Date(), language: targetLanguage, sourceLayoutLang: layoutRefLang, sourceTextLang: textRefLang } } }
-    );
-
-    return res.json({ success: true, message: 'Translation generated', timestamp: new Date(), data: { key: tKey } } as ApiResponse);
-  } catch (error) { return next(error); }
-});
-
 // Content Reduction - AI-powered text grouping and language detection
 // This step detects components repeated in different languages and creates grouped JSON
 documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: NextFunction) => {
@@ -401,7 +310,7 @@ documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: Ne
 
     // Load the analysis JSON containing extracted PDF content
     const analysisBuffer = await storage.downloadPrivate(document.storage.analysisKey);
-    const analysisData = JSON.parse(analysisBuffer.toString('utf8'));
+    const analysisData = JSON.parse(analysisBuffer.toString('utf8')) as PDFAnalysisData;
 
     // Perform content reduction using our standard AI processor
     const aiAgent = getAppContext().aiAgent;
@@ -428,6 +337,17 @@ documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: Ne
       body: Buffer.from(JSON.stringify(chunksResult, null, 2))
     });
 
+    // Save AI logs to storage for debugging
+    let aiLogsKey = '';
+    if (reductionResult.aiLogs && reductionResult.aiLogs.length > 0) {
+      aiLogsKey = `documents/${documentId}/reduced/${documentId}_ai_logs.json`;
+      await storage.uploadPrivate({
+        key: aiLogsKey,
+        contentType: 'application/json',
+        body: Buffer.from(JSON.stringify(reductionResult.aiLogs, null, 2))
+      });
+    }
+
     // Update document in database with results
     await db.collection('documents').updateOne(
       { id: documentId },
@@ -439,10 +359,11 @@ documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: Ne
             totalGroups: reductionResult.totalGroups,
             languagesDetected: reductionResult.languagesDetected,
             processedAt: new Date(),
-            processingLogs: reductionResult.aiLogs // Store AI dialog logs
+            hasAiLogs: reductionResult.aiLogs && reductionResult.aiLogs.length > 0
           },
           'storage.reducedJson': reducedKey,
           'storage.chunksJson': chunksKey,
+          'storage.aiLogsKey': aiLogsKey || undefined,
           'stats.languagesDetected': reductionResult.languagesDetected.length,
           'stats.textGroupsCount': reductionResult.totalGroups,
           availableLanguages: reductionResult.languagesDetected,
@@ -457,7 +378,9 @@ documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: Ne
         totalGroups: reductionResult.totalGroups,
         languagesDetected: reductionResult.languagesDetected,
         processedAt: new Date(),
-        hasAiLogs: reductionResult.aiLogs && reductionResult.aiLogs.length > 0
+        hasAiLogs: reductionResult.aiLogs && reductionResult.aiLogs.length > 0,
+        chunksGenerated: chunksResult.totalChunks,
+        processingModel: 'gemini-1.5-pro'
       },
       message: 'Content reduction completed successfully',
       timestamp: new Date()
@@ -512,6 +435,59 @@ documentsRouter.get('/:id/ai-logs', async (req: Request, res: Response, next: Ne
     return res.json({
       success: true,
       data: { aiLogs },
+      timestamp: new Date()
+    } as ApiResponse);
+
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// Get detailed content reduction results for a document
+documentsRouter.get('/:id/reduction-details', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id: documentId } = req.params;
+    const db = getDb();
+    const storage = getStorage();
+
+    const document = await db.collection('documents').findOne({ id: documentId });
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        error: 'Document not found',
+        timestamp: new Date()
+      } as ApiResponse);
+    }
+
+    if (!document.storage?.reducedJson) {
+      return res.status(404).json({
+        success: false,
+        error: 'Content reduction not completed for this document',
+        timestamp: new Date()
+      } as ApiResponse);
+    }
+
+    // Load reduction results and chunks
+    const [reductionBuffer, chunksBuffer] = await Promise.all([
+      storage.downloadPrivate(document.storage.reducedJson),
+      document.storage.chunksJson ? storage.downloadPrivate(document.storage.chunksJson) : Promise.resolve(null)
+    ]);
+
+    const reductionData = JSON.parse(reductionBuffer.toString('utf8'));
+    const chunksData = chunksBuffer ? JSON.parse(chunksBuffer.toString('utf8')) : null;
+
+    return res.json({
+      success: true,
+      data: {
+        reduction: reductionData,
+        chunks: chunksData,
+        summary: {
+          totalGroups: reductionData.totalGroups,
+          languagesDetected: reductionData.languagesDetected,
+          processedAt: reductionData.processedAt,
+          totalChunks: chunksData?.totalChunks || 0
+        }
+      },
       timestamp: new Date()
     } as ApiResponse);
 

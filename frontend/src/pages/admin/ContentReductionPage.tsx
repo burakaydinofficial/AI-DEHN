@@ -5,7 +5,9 @@ import {
   CheckCircle,
   Play,
   Eye,
-  FileText
+  FileText,
+  X,
+  Activity
 } from 'lucide-react';
 import axios from 'axios';
 import './AdminPages.css';
@@ -16,7 +18,7 @@ interface Document {
   id: string;
   filename: string;
   originalName: string;
-  status: 'processed' | 'reduced' | 'failed';
+  status: 'processed' | 'reducing' | 'reduced' | 'failed';
   availableLanguages?: string[];
   stats?: {
     pageCount?: number;
@@ -27,24 +29,59 @@ interface Document {
     totalGroups: number;
     languagesDetected: string[];
     processedAt: string;
+    hasAiLogs?: boolean;
   };
 }
 
-interface ReductionParams {
-  aiModel: string;
-  groupingStrategy: string;
-  languageDetectionThreshold: number;
+interface ContentReductionGroup {
+  id: string;
+  type: 'title' | 'paragraph' | 'list' | 'other';
+  originalText: string;
+  detectedLanguage: string;
+  confidence: number;
+  wordCount: number;
+  bbox?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  page: number;
+}
+
+interface DetailedReductionResult {
+  documentId: string;
+  totalGroups: number;
+  languagesDetected: string[];
+  processedAt: string;
+  processingModel: string;
+  chunksGenerated: number;
+  groups: ContentReductionGroup[];
+  statistics: {
+    averageConfidence: number;
+    languageDistribution: Record<string, number>;
+    typeDistribution: Record<string, number>;
+  };
+}
+
+interface AILogEntry {
+  timestamp: string;
+  operation: string;
+  model: string;
+  tokensUsed: number;
+  processingTime: number;
+  input: string;
+  output: string;
 }
 
 export const ContentReductionPage: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<Set<string>>(new Set());
-  const [reductionParams, setReductionParams] = useState<ReductionParams>({
-    aiModel: 'gemini-1.5-pro',
-    groupingStrategy: 'mixed',
-    languageDetectionThreshold: 0.7
-  });
+  const [viewingDetails, setViewingDetails] = useState<string | null>(null);
+  const [reductionDetails, setReductionDetails] = useState<DetailedReductionResult | null>(null);
+  const [aiLogs, setAiLogs] = useState<AILogEntry[]>([]);
+  const [showAiLogs, setShowAiLogs] = useState(false);
 
   useEffect(() => {
     fetchDocuments();
@@ -52,10 +89,10 @@ export const ContentReductionPage: React.FC = () => {
 
   const fetchDocuments = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/admin/documents`);
-      // Only show documents that are ready for content reduction
+      const response = await axios.get(`${API_BASE}/admin/documents?limit=100`);
+      // Only show documents that are ready for content reduction or already reduced
       const docs = (response.data.data || []).filter((doc: Document) => 
-        doc.status === 'processed' || doc.status === 'reduced'
+        doc.status === 'processed' || doc.status === 'reducing' || doc.status === 'reduced' || doc.status === 'failed'
       );
       setDocuments(docs);
     } catch (error) {
@@ -69,19 +106,24 @@ export const ContentReductionPage: React.FC = () => {
     try {
       setProcessing(prev => new Set(prev).add(documentId));
       
-      const response = await axios.post(`${API_BASE}/admin/documents/${documentId}/reduce`, {
-        aiModel: reductionParams.aiModel,
-        groupingStrategy: reductionParams.groupingStrategy,
-        languageDetectionThreshold: reductionParams.languageDetectionThreshold
-      });
+      // Use our fixed backend processor - no user configuration needed
+      const response = await axios.post(`${API_BASE}/admin/documents/${documentId}/reduce`);
 
       if (response.data.success) {
         // Refresh documents to show updated status
         await fetchDocuments();
+        
+        // Show success message with details
+        const result = response.data.data;
+        alert(`Content reduction completed!
+
+Groups created: ${result.totalGroups}
+Languages detected: ${result.languagesDetected.join(', ')}
+Chunks generated: ${result.chunksGenerated}`);
       }
     } catch (error: any) {
       console.error('Content reduction failed:', error);
-      alert(error.response?.data?.message || 'Content reduction failed');
+      alert(error.response?.data?.message || error.response?.data?.error || 'Content reduction failed');
     } finally {
       setProcessing(prev => {
         const newSet = new Set(prev);
@@ -91,16 +133,72 @@ export const ContentReductionPage: React.FC = () => {
     }
   };
 
+  const viewReductionDetails = async (documentId: string) => {
+    try {
+      setViewingDetails(documentId);
+      const response = await axios.get(`${API_BASE}/admin/documents/${documentId}/reduction-details`);
+      
+      if (response.data.success) {
+        setReductionDetails(response.data.data);
+      }
+    } catch (error: any) {
+      console.error('Failed to load reduction details:', error);
+      alert('Failed to load reduction details');
+      setViewingDetails(null);
+    }
+  };
+
+  const viewAiLogs = async (documentId: string) => {
+    try {
+      const response = await axios.get(`${API_BASE}/admin/documents/${documentId}/ai-logs`);
+      
+      if (response.data.success) {
+        setAiLogs(response.data.data);
+        setShowAiLogs(true);
+      }
+    } catch (error: any) {
+      console.error('Failed to load AI logs:', error);
+      alert('Failed to load AI logs');
+    }
+  };
+
+  const closeDetailsView = () => {
+    setViewingDetails(null);
+    setReductionDetails(null);
+  };
+
+  const closeAiLogsView = () => {
+    setShowAiLogs(false);
+    setAiLogs([]);
+  };
+
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case 'processed':
-        return 'ready';
+        return 'status-ready';
+      case 'reducing':
+        return 'status-processing';
       case 'reduced':
-        return 'success';
+        return 'status-success';
       case 'failed':
-        return 'error';
+        return 'status-error';
       default:
-        return 'default';
+        return 'status-default';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'processed':
+        return 'Ready for Reduction';
+      case 'reducing':
+        return 'Processing...';
+      case 'reduced':
+        return 'Completed';
+      case 'failed':
+        return 'Failed';
+      default:
+        return status;
     }
   };
 
@@ -117,7 +215,7 @@ export const ContentReductionPage: React.FC = () => {
 
   return (
     <div className="admin-page">
-      {/* Header and Configuration */}
+      {/* Header */}
       <div className="admin-section">
         <div className="admin-page-header">
           <div className="admin-page-title">
@@ -126,66 +224,32 @@ export const ContentReductionPage: React.FC = () => {
           </div>
         </div>
         <p className="admin-section-description">
-          Use AI to detect and group repeated components across different languages. 
-          This step identifies text groups, detects languages, and prepares content for translation.
+          AI-powered content reduction using Gemini 1.5 Pro. 
+          Automatically detects languages, groups content, and prepares documents for translation.
         </p>
 
-        {/* Reduction Parameters */}
-        <div className="bg-gray-50 rounded-lg p-4 mb-6">
-          <h3 className="font-medium text-gray-900 mb-3">AI Configuration</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                AI Model
-              </label>
-              <select
-                value={reductionParams.aiModel}
-                onChange={(e) => setReductionParams(prev => ({ ...prev, aiModel: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                <option value="gemini-1.0-pro">Gemini 1.0 Pro</option>
-                <option value="gpt-4">GPT-4</option>
-                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-              </select>
+        {/* Configuration Info */}
+        <div className="admin-info-card">
+          <h3>AI Configuration</h3>
+          <div className="admin-config-info">
+            <div className="config-item">
+              <strong>Model:</strong> Gemini 1.5 Pro
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Grouping Strategy
-              </label>
-              <select
-                value={reductionParams.groupingStrategy}
-                onChange={(e) => setReductionParams(prev => ({ ...prev, groupingStrategy: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="mixed">Mixed (Titles + Paragraphs)</option>
-                <option value="titles">Titles Only</option>
-                <option value="paragraphs">Paragraphs Only</option>
-                <option value="semantic">Semantic Grouping</option>
-              </select>
+            <div className="config-item">
+              <strong>Strategy:</strong> Mixed content grouping (titles + paragraphs)
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Language Detection Threshold
-              </label>
-              <select
-                value={reductionParams.languageDetectionThreshold}
-                onChange={(e) => setReductionParams(prev => ({ ...prev, languageDetectionThreshold: parseFloat(e.target.value) }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value={0.5}>50% (Lower confidence)</option>
-                <option value={0.7}>70% (Balanced)</option>
-                <option value={0.9}>90% (High confidence)</option>
-              </select>
+            <div className="config-item">
+              <strong>Language Detection:</strong> 70% confidence threshold
             </div>
           </div>
         </div>
 
+        {/* Document List */}
         {documents.length === 0 ? (
-          <div className="text-center py-12">
-            <GitBranch className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No documents ready</h3>
-            <p className="text-gray-600">Upload and process PDF documents first to enable content reduction.</p>
+          <div className="admin-empty-state">
+            <GitBranch className="admin-empty-icon" />
+            <h3>No documents ready</h3>
+            <p>Upload and process PDF documents first to enable content reduction.</p>
           </div>
         ) : (
           <div className="admin-document-list">
@@ -200,72 +264,72 @@ export const ContentReductionPage: React.FC = () => {
                       <div className={`admin-status-badge ${getStatusBadgeClass(doc.status)}`}>
                         {doc.status === 'reduced' ? (
                           <CheckCircle className="admin-status-icon" />
+                        ) : doc.status === 'reducing' ? (
+                          <RefreshCw className="admin-status-icon animate-spin" />
                         ) : (
                           <FileText className="admin-status-icon" />
                         )}
-                        <span>
-                          {doc.status === 'processed' ? 'Ready for Reduction' : doc.status}
-                        </span>
+                        <span>{getStatusText(doc.status)}</span>
                       </div>
                     </div>
 
                     {doc.contentReduction ? (
-                      <div className="grid grid-cols-3 gap-4 text-sm mb-3">
-                        <div className="bg-green-50 p-2 rounded">
-                          <div className="font-medium text-green-900">{doc.contentReduction.totalGroups}</div>
-                          <div className="text-green-600">Text Groups</div>
-                        </div>
-                        <div className="bg-blue-50 p-2 rounded">
-                          <div className="font-medium text-blue-900">{doc.contentReduction.languagesDetected.length}</div>
-                          <div className="text-blue-600">Languages</div>
-                        </div>
-                        <div className="bg-purple-50 p-2 rounded">
-                          <div className="font-medium text-purple-900">
-                            {new Date(doc.contentReduction.processedAt).toLocaleDateString()}
+                      <>
+                        <div className="admin-stats-grid">
+                          <div className="admin-stat success">
+                            <div className="stat-value">{doc.contentReduction.totalGroups}</div>
+                            <div className="stat-label">Text Groups</div>
                           </div>
-                          <div className="text-purple-600">Processed</div>
+                          <div className="admin-stat info">
+                            <div className="stat-value">{doc.contentReduction.languagesDetected.length}</div>
+                            <div className="stat-label">Languages</div>
+                          </div>
+                          <div className="admin-stat purple">
+                            <div className="stat-value">
+                              {new Date(doc.contentReduction.processedAt).toLocaleDateString()}
+                            </div>
+                            <div className="stat-label">Processed</div>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-4 text-sm mb-3">
-                        <div className="bg-blue-50 p-2 rounded">
-                          <div className="font-medium text-blue-900">{doc.stats?.pageCount || 0}</div>
-                          <div className="text-blue-600">Pages</div>
-                        </div>
-                        <div className="bg-gray-50 p-2 rounded">
-                          <div className="font-medium text-gray-900">Ready</div>
-                          <div className="text-gray-600">For Processing</div>
-                        </div>
-                      </div>
-                    )}
 
-                    {doc.contentReduction && (
-                      <div className="flex flex-wrap gap-1 mb-3">
-                        <span className="text-sm font-medium text-gray-700 mr-2">Detected Languages:</span>
-                        {doc.contentReduction.languagesDetected.map(lang => (
-                          <span key={lang} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                            {lang.toUpperCase()}
-                          </span>
-                        ))}
+                        <div className="admin-language-tags">
+                          <span className="language-label">Detected Languages:</span>
+                          {doc.contentReduction.languagesDetected.map(lang => (
+                            <span key={lang} className="language-tag">
+                              {lang.toUpperCase()}
+                            </span>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="admin-stats-grid">
+                        <div className="admin-stat info">
+                          <div className="stat-value">{doc.stats?.pageCount || 0}</div>
+                          <div className="stat-label">Pages</div>
+                        </div>
+                        <div className="admin-stat default">
+                          <div className="stat-value">Ready</div>
+                          <div className="stat-label">For Processing</div>
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 ml-4">
+                  <div className="admin-document-actions">
                     {doc.status === 'processed' && (
                       <button
                         onClick={() => startContentReduction(doc.id)}
                         disabled={processing.has(doc.id)}
-                        className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="admin-btn primary"
                       >
                         {processing.has(doc.id) ? (
                           <>
-                            <RefreshCw className="w-3 h-3 animate-spin" />
+                            <RefreshCw className="admin-btn-icon animate-spin" />
                             Processing...
                           </>
                         ) : (
                           <>
-                            <Play className="w-3 h-3" />
+                            <Play className="admin-btn-icon" />
                             Start Reduction
                           </>
                         )}
@@ -273,13 +337,25 @@ export const ContentReductionPage: React.FC = () => {
                     )}
                     
                     {doc.status === 'reduced' && (
-                      <button
-                        onClick={() => console.log('View results for:', doc.id)}
-                        className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                      >
-                        <Eye className="w-3 h-3" />
-                        View Results
-                      </button>
+                      <>
+                        <button
+                          onClick={() => viewReductionDetails(doc.id)}
+                          className="admin-btn success"
+                        >
+                          <Eye className="admin-btn-icon" />
+                          View Results
+                        </button>
+                        
+                        {doc.contentReduction?.hasAiLogs && (
+                          <button
+                            onClick={() => viewAiLogs(doc.id)}
+                            className="admin-btn secondary"
+                          >
+                            <Activity className="admin-btn-icon" />
+                            AI Logs
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -289,42 +365,212 @@ export const ContentReductionPage: React.FC = () => {
         )}
       </div>
 
-      {/* Content Reduction Info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-blue-900 mb-2">
-          Content Reduction Process
-        </h3>
-        <div className="text-blue-800 space-y-2">
-          <p><strong>1. Text Grouping:</strong> AI identifies and groups repeated content (titles, paragraphs, lists)</p>
-          <p><strong>2. Language Detection:</strong> Automatically detects languages present in the document</p>
-          <p><strong>3. Semantic Analysis:</strong> Groups related content across different languages</p>
-          <p><strong>4. Structure Preservation:</strong> Maintains layout information and bounding boxes</p>
-          <p><strong>5. Preparation for Translation:</strong> Creates structured data ready for multilingual generation</p>
+      {/* Process Information */}
+      <div className="admin-info-section">
+        <h3>Content Reduction Process</h3>
+        <div className="admin-process-steps">
+          <div className="process-step">
+            <div className="step-number">1</div>
+            <div className="step-content">
+              <h4>Text Grouping</h4>
+              <p>AI identifies and groups repeated content (titles, paragraphs, lists)</p>
+            </div>
+          </div>
+          <div className="process-step">
+            <div className="step-number">2</div>
+            <div className="step-content">
+              <h4>Language Detection</h4>
+              <p>Automatically detects languages present in the document</p>
+            </div>
+          </div>
+          <div className="process-step">
+            <div className="step-number">3</div>
+            <div className="step-content">
+              <h4>Semantic Analysis</h4>
+              <p>Groups related content across different languages</p>
+            </div>
+          </div>
+          <div className="process-step">
+            <div className="step-number">4</div>
+            <div className="step-content">
+              <h4>Structure Preservation</h4>
+              <p>Maintains layout information and bounding boxes</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Processing Stats */}
-      <div className="bg-gray-50 border rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Reduction Progress
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="text-center p-4 bg-white rounded border">
-            <div className="font-medium text-blue-900">{documents.filter(d => d.status === 'processed').length}</div>
-            <div className="text-blue-600 text-sm">Ready for Reduction</div>
+      {/* Statistics */}
+      <div className="admin-stats-section">
+        <h3>Reduction Progress</h3>
+        <div className="admin-stats-grid">
+          <div className="admin-stat-card info">
+            <div className="stat-value">{documents.filter(d => d.status === 'processed').length}</div>
+            <div className="stat-label">Ready for Reduction</div>
           </div>
-          <div className="text-center p-4 bg-white rounded border">
-            <div className="font-medium text-green-900">{documents.filter(d => d.status === 'reduced').length}</div>
-            <div className="text-green-600 text-sm">Reduced</div>
+          <div className="admin-stat-card success">
+            <div className="stat-value">{documents.filter(d => d.status === 'reduced').length}</div>
+            <div className="stat-label">Completed</div>
           </div>
-          <div className="text-center p-4 bg-white rounded border">
-            <div className="font-medium text-purple-900">
+          <div className="admin-stat-card purple">
+            <div className="stat-value">
               {documents.reduce((acc, d) => acc + (d.contentReduction?.totalGroups || 0), 0)}
             </div>
-            <div className="text-purple-600 text-sm">Total Text Groups</div>
+            <div className="stat-label">Total Text Groups</div>
+          </div>
+          <div className="admin-stat-card warning">
+            <div className="stat-value">
+              {new Set(documents.flatMap(d => d.contentReduction?.languagesDetected || [])).size}
+            </div>
+            <div className="stat-label">Unique Languages</div>
           </div>
         </div>
       </div>
+
+      {/* Reduction Details Modal */}
+      {viewingDetails && reductionDetails && (
+        <div className="admin-modal-overlay">
+          <div className="admin-modal large">
+            <div className="admin-modal-header">
+              <h2>Content Reduction Details</h2>
+              <button onClick={closeDetailsView} className="admin-modal-close">
+                <X />
+              </button>
+            </div>
+            
+            <div className="admin-modal-content">
+              {/* Summary */}
+              <div className="reduction-summary">
+                <div className="summary-stats">
+                  <div className="summary-stat">
+                    <div className="stat-value">{reductionDetails.totalGroups}</div>
+                    <div className="stat-label">Total Groups</div>
+                  </div>
+                  <div className="summary-stat">
+                    <div className="stat-value">{reductionDetails.languagesDetected.length}</div>
+                    <div className="stat-label">Languages</div>
+                  </div>
+                  <div className="summary-stat">
+                    <div className="stat-value">{reductionDetails.chunksGenerated}</div>
+                    <div className="stat-label">Chunks Generated</div>
+                  </div>
+                  <div className="summary-stat">
+                    <div className="stat-value">{Math.round(reductionDetails.statistics.averageConfidence * 100)}%</div>
+                    <div className="stat-label">Avg Confidence</div>
+                  </div>
+                </div>
+                
+                <div className="processing-info">
+                  <p><strong>Model:</strong> {reductionDetails.processingModel}</p>
+                  <p><strong>Processed:</strong> {new Date(reductionDetails.processedAt).toLocaleString()}</p>
+                </div>
+              </div>
+
+              {/* Language Distribution */}
+              <div className="section">
+                <h4>Language Distribution</h4>
+                <div className="language-distribution">
+                  {Object.entries(reductionDetails.statistics.languageDistribution).map(([lang, count]) => (
+                    <div key={lang} className="language-bar">
+                      <span className="language-name">{lang.toUpperCase()}</span>
+                      <div className="bar">
+                        <div 
+                          className="bar-fill"
+                          style={{ 
+                            width: `${(count / reductionDetails.totalGroups) * 100}%`
+                          }}
+                        />
+                      </div>
+                      <span className="language-count">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Content Type Distribution */}
+              <div className="section">
+                <h4>Content Type Distribution</h4>
+                <div className="type-distribution">
+                  {Object.entries(reductionDetails.statistics.typeDistribution).map(([type, count]) => (
+                    <div key={type} className="type-item">
+                      <span className="type-name">{type}</span>
+                      <span className="type-count">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Groups */}
+              <div className="section">
+                <h4>Content Groups ({reductionDetails.groups.length})</h4>
+                <div className="groups-list">
+                  {reductionDetails.groups.slice(0, 10).map((group) => (
+                    <div key={group.id} className="group-item">
+                      <div className="group-header">
+                        <span className="group-type">{group.type}</span>
+                        <span className="group-lang">{group.detectedLanguage.toUpperCase()}</span>
+                        <span className="group-confidence">{Math.round(group.confidence * 100)}%</span>
+                        <span className="group-page">Page {group.page}</span>
+                      </div>
+                      <div className="group-text">
+                        {group.originalText.substring(0, 200)}
+                        {group.originalText.length > 200 && '...'}
+                      </div>
+                    </div>
+                  ))}
+                  {reductionDetails.groups.length > 10 && (
+                    <div className="groups-more">
+                      +{reductionDetails.groups.length - 10} more groups
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Logs Modal */}
+      {showAiLogs && (
+        <div className="admin-modal-overlay">
+          <div className="admin-modal large">
+            <div className="admin-modal-header">
+              <h2>AI Processing Logs</h2>
+              <button onClick={closeAiLogsView} className="admin-modal-close">
+                <X />
+              </button>
+            </div>
+            
+            <div className="admin-modal-content">
+              <div className="ai-logs-list">
+                {aiLogs.map((log, index) => (
+                  <div key={index} className="ai-log-entry">
+                    <div className="log-header">
+                      <span className="log-operation">{log.operation}</span>
+                      <span className="log-model">{log.model}</span>
+                      <span className="log-tokens">{log.tokensUsed} tokens</span>
+                      <span className="log-time">{log.processingTime}ms</span>
+                      <span className="log-timestamp">
+                        {new Date(log.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className="log-content">
+                      <div className="log-input">
+                        <h5>Input:</h5>
+                        <pre>{log.input.substring(0, 500)}{log.input.length > 500 && '...'}</pre>
+                      </div>
+                      <div className="log-output">
+                        <h5>Output:</h5>
+                        <pre>{log.output.substring(0, 500)}{log.output.length > 500 && '...'}</pre>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

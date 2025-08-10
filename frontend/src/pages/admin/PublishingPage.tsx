@@ -179,16 +179,16 @@ export const PublishingPage: React.FC = () => {
     }));
   };
 
-  const getStatusBadgeClass = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'translated':
-        return 'ready';
+        return 'border-blue-200 bg-blue-50 text-blue-700';
       case 'published':
-        return 'success';
+        return 'border-green-200 bg-green-50 text-green-700';
       case 'failed':
-        return 'error';
+        return 'border-red-200 bg-red-50 text-red-700';
       default:
-        return 'default';
+        return 'border-gray-200 bg-gray-50 text-gray-700';
     }
   };
 
