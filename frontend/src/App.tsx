@@ -16,14 +16,14 @@ const Navigation = () => {
         to="/" 
         className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
       >
-        <FileText className="w-4 h-4" />
+        <FileText className="nav-icon" />
         Documents
       </Link>
       <Link 
         to="/admin" 
         className={`nav-link ${location.pathname === '/admin' ? 'active' : ''}`}
       >
-        <Settings className="w-4 h-4" />
+        <Settings className="nav-icon" />
         Admin Panel
       </Link>
     </nav>

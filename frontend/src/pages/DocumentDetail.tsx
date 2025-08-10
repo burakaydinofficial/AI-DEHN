@@ -16,6 +16,7 @@ import {
   Eye,
   Grid3X3 as Grid
 } from 'lucide-react';
+import './DocumentDetail.css';
 import type { ApiResponse, Document } from '../types/api';
 
 const API_BASE = import.meta.env.VITE_ADMIN_API_BASE || 'http://localhost:3001/api';
@@ -105,10 +106,10 @@ export function DocumentDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading document...</p>
+      <div className="document-detail-loading">
+        <div className="document-detail-loading-content">
+          <RefreshCw className="document-detail-loading-spinner animate-spin" />
+          <p className="document-detail-loading-text">Loading document...</p>
         </div>
       </div>
     );
@@ -116,10 +117,10 @@ export function DocumentDetail() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600 font-medium">{error}</p>
+      <div className="document-detail-error">
+        <div className="document-detail-error-content">
+          <AlertCircle className="document-detail-error-icon" />
+          <p className="document-detail-error-text">{error}</p>
         </div>
       </div>
     );
@@ -127,10 +128,10 @@ export function DocumentDetail() {
 
   if (!doc) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">Document not found</p>
+      <div className="document-detail-not-found">
+        <div className="document-detail-not-found-content">
+          <FileText className="document-detail-not-found-icon" />
+          <p className="document-detail-not-found-text">Document not found</p>
         </div>
       </div>
     );
