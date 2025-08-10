@@ -1,203 +1,430 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Send, 
+  Globe2, 
   RefreshCw, 
-  CheckCircle,
+  Plus,
+  Link2,
   Eye,
-  Globe,
-  Download,
-  Copy,
-  ExternalLink
+  CheckCircle,
+  Clock,
+  Package,
+  FileText,
+  Languages,
+  ExternalLink,
+  Search,
+  Filter,
+  X,
+  Save
 } from 'lucide-react';
 import axios from 'axios';
 import './AdminPages.css';
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
 interface Document {
   id: string;
   filename: string;
   originalName: string;
-  status: 'translated' | 'published' | 'failed';
-  translations?: {
-    [lang: string]: {
-      status: 'pending' | 'completed' | 'failed';
-      completedAt?: string;
-      textGroupsCount?: number;
-    };
-  };
-  publications?: {
-    [version: string]: {
-      languages: string[];
-      publishedAt: string;
-      url?: string;
-      format: string;
-      status: 'active' | 'archived';
-    };
+  status: string;
+  availableLanguages: string[];
+  translations?: Array<{
+    language: string;
+    chunksGenerated: boolean;
+  }>;
+  storage?: {
+    chunksJson?: boolean;
+    analysisJson?: boolean;
   };
 }
 
-interface PublishParams {
-  selectedLanguages: string[];
-  outputFormat: string;
-  versionName: string;
-  publicAccess: boolean;
-  includeMetadata: boolean;
+interface Product {
+  id: string;
+  name: string;
+  code: string;
+  category: string;
+  status: string;
 }
 
-const OUTPUT_FORMATS = [
-  { value: 'pdf', label: 'PDF Document', description: 'Recreate PDF with translated content' },
-  { value: 'json', label: 'JSON Data', description: 'Structured data format' },
-  { value: 'html', label: 'HTML Web Page', description: 'Interactive web format' },
-  { value: 'xml', label: 'XML Document', description: 'Structured markup format' }
-];
+interface PublishReadyDocument {
+  id: string;
+  documentId: string;
+  documentName: string;
+  language: string;
+  contentType: 'original' | 'translation';
+  chunksCount: number;
+  imagesCount: number;
+  status: 'ready' | 'preparing' | 'failed';
+  generatedAt: string;
+  chunks: Array<{
+    id: string;
+    content: string;
+    pageNumbers: number[];
+    images?: string[];
+  }>;
+}
+
+interface PublishedDocument {
+  id: string;
+  publishReadyDocumentId: string;
+  productId: string;
+  documentName: string;
+  productName: string;
+  productCode: string;
+  language: string;
+  version: string;
+  url: string;
+  publishedAt: string;
+  status: 'published' | 'unpublished';
+}
+
+interface LinkFormData {
+  documentId: string;
+  productId: string;
+  language: string;
+  version: string;
+}
+
+const API_BASE = import.meta.env.VITE_ADMIN_API_BASE || 'http://localhost:3001/api';
 
 export const PublishingPage: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [publishReadyDocs, setPublishReadyDocs] = useState<PublishReadyDocument[]>([]);
+  const [publishedDocs, setPublishedDocs] = useState<PublishedDocument[]>([]);
   const [loading, setLoading] = useState(true);
-  const [publishing, setPublishing] = useState<Set<string>>(new Set());
-  const [publishParams, setPublishParams] = useState<PublishParams>({
-    selectedLanguages: [],
-    outputFormat: 'pdf',
-    versionName: '',
-    publicAccess: false,
-    includeMetadata: true
+  const [activeTab, setActiveTab] = useState<'ready' | 'published'>('ready');
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkFormData, setLinkFormData] = useState<LinkFormData>({
+    documentId: '',
+    productId: '',
+    language: '',
+    version: 'v1.0'
   });
-  const [selectedDocument, setSelectedDocument] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [languageFilter, setLanguageFilter] = useState('');
+  const [productFilter, setProductFilter] = useState('');
+  const [processing, setProcessing] = useState<string | null>(null);
+  const [preparingDocument, setPreparingDocument] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchDocuments();
+    fetchData();
   }, []);
 
-  const fetchDocuments = async () => {
+  const fetchData = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/admin/documents`);
-      // Only show documents that are ready for publishing
-      const docs = (response.data.data || []).filter((doc: Document) => 
-        doc.status === 'translated' || doc.status === 'published'
-      );
-      setDocuments(docs);
+      setLoading(true);
+      await Promise.all([
+        fetchDocuments(),
+        fetchProducts(),
+        fetchPublishReadyDocuments(),
+        fetchPublishedDocuments()
+      ]);
     } catch (error) {
-      console.error('Failed to fetch documents:', error);
+      console.error('Failed to fetch publishing data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const getAvailableLanguages = (doc: Document) => {
-    if (!doc.translations) return [];
-    return Object.entries(doc.translations)
-      .filter(([_, translation]) => translation.status === 'completed')
-      .map(([lang]) => lang);
+  const fetchDocuments = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/admin/documents`);
+      if (response.data.success) {
+        // Only get documents that have chunks or translations ready
+        const readyDocs = (response.data.data || []).filter((doc: Document) => 
+          doc.storage?.chunksJson || (doc.translations && doc.translations.length > 0)
+        );
+        setDocuments(readyDocs);
+      } else {
+        // Mock data for development
+        setDocuments([
+          {
+            id: '1',
+            filename: 'lightning-rod-manual.pdf',
+            originalName: 'Lightning Rod Installation Manual',
+            status: 'chunked',
+            availableLanguages: ['en', 'de', 'fr'],
+            translations: [
+              { language: 'de', chunksGenerated: true },
+              { language: 'fr', chunksGenerated: true }
+            ],
+            storage: { chunksJson: true, analysisJson: true }
+          },
+          {
+            id: '2',
+            filename: 'grounding-system-guide.pdf',
+            originalName: 'Grounding System Installation Guide',
+            status: 'translated',
+            availableLanguages: ['en', 'es'],
+            translations: [
+              { language: 'es', chunksGenerated: true }
+            ],
+            storage: { chunksJson: true, analysisJson: true }
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch documents:', error);
+      setDocuments([]);
+    }
   };
 
-  const startPublishing = async (documentId: string) => {
-    if (!publishParams.versionName.trim()) {
-      alert('Please enter a version name');
-      return;
+  const fetchProducts = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/admin/products`);
+      if (response.data.success) {
+        setProducts(response.data.data || []);
+      } else {
+        // Mock data for development
+        setProducts([
+          {
+            id: '1',
+            name: 'Lightning Rod System A',
+            code: 'LRS-A-001',
+            category: 'Lightning Protection',
+            status: 'active'
+          },
+          {
+            id: '2',
+            name: 'Grounding Conductor Type B',
+            code: 'GC-B-002',
+            category: 'Grounding Systems',
+            status: 'active'
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+      setProducts([]);
     }
+  };
 
-    if (publishParams.selectedLanguages.length === 0) {
-      alert('Please select at least one language');
-      return;
+  const fetchPublishReadyDocuments = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/admin/publish-ready-documents`);
+      if (response.data.success) {
+        setPublishReadyDocs(response.data.data || []);
+      } else {
+        // Mock data for development
+        setPublishReadyDocs([
+          {
+            id: '1',
+            documentId: '1',
+            documentName: 'Lightning Rod Installation Manual',
+            language: 'en',
+            contentType: 'original',
+            chunksCount: 15,
+            imagesCount: 8,
+            status: 'ready',
+            generatedAt: '2025-01-10T10:00:00Z',
+            chunks: []
+          },
+          {
+            id: '2',
+            documentId: '1',
+            documentName: 'Lightning Rod Installation Manual',
+            language: 'de',
+            contentType: 'translation',
+            chunksCount: 15,
+            imagesCount: 8,
+            status: 'ready',
+            generatedAt: '2025-01-10T11:00:00Z',
+            chunks: []
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch publish-ready documents:', error);
+      setPublishReadyDocs([]);
     }
+  };
+
+  const fetchPublishedDocuments = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/admin/published-documents`);
+      if (response.data.success) {
+        setPublishedDocs(response.data.data || []);
+      } else {
+        // Mock data for development
+        setPublishedDocs([
+          {
+            id: '1',
+            publishReadyDocumentId: '1',
+            productId: '1',
+            documentName: 'Lightning Rod Installation Manual',
+            productName: 'Lightning Rod System A',
+            productCode: 'LRS-A-001',
+            language: 'en',
+            version: 'v1.0',
+            url: 'https://docs.dehn.com/products/lrs-a-001/en/v1.0',
+            publishedAt: '2025-01-10T12:00:00Z',
+            status: 'published'
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch published documents:', error);
+      setPublishedDocs([]);
+    }
+  };
+
+  const prepareDocumentForPublishing = async (documentId: string, language: string) => {
+    try {
+      setPreparingDocument(`${documentId}-${language}`);
+      
+      const response = await axios.post(`${API_BASE}/admin/documents/${documentId}/prepare-for-publishing`, {
+        language
+      });
+      
+      if (response.data.success) {
+        await fetchPublishReadyDocuments();
+      } else {
+        // Mock successful preparation
+        const document = documents.find(d => d.id === documentId);
+        if (document) {
+          const newReadyDoc: PublishReadyDocument = {
+            id: Date.now().toString(),
+            documentId,
+            documentName: document.originalName,
+            language,
+            contentType: language === 'en' ? 'original' : 'translation',
+            chunksCount: Math.floor(Math.random() * 20) + 5,
+            imagesCount: Math.floor(Math.random() * 10) + 1,
+            status: 'ready',
+            generatedAt: new Date().toISOString(),
+            chunks: []
+          };
+          setPublishReadyDocs([...publishReadyDocs, newReadyDoc]);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to prepare document for publishing:', error);
+      alert('Failed to prepare document for publishing. Please try again.');
+    } finally {
+      setPreparingDocument(null);
+    }
+  };
+
+  const openLinkModal = (publishReadyDocId?: string) => {
+    const publishReadyDoc = publishReadyDocs.find(d => d.id === publishReadyDocId);
+    setLinkFormData({
+      documentId: publishReadyDoc?.documentId || '',
+      productId: '',
+      language: publishReadyDoc?.language || '',
+      version: 'v1.0'
+    });
+    setShowLinkModal(true);
+  };
+
+  const handleLinkAndPublish = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProcessing('linking');
 
     try {
-      setPublishing(prev => new Set(prev).add(documentId));
+      const publishReadyDoc = publishReadyDocs.find(d => 
+        d.documentId === linkFormData.documentId && d.language === linkFormData.language
+      );
       
-      const response = await axios.post(`${API_BASE}/admin/documents/${documentId}/publish`, {
-        languages: publishParams.selectedLanguages,
-        outputFormat: publishParams.outputFormat,
-        versionName: publishParams.versionName,
-        publicAccess: publishParams.publicAccess,
-        includeMetadata: publishParams.includeMetadata
+      if (!publishReadyDoc) {
+        alert('Please prepare the document for publishing first.');
+        return;
+      }
+
+      const response = await axios.post(`${API_BASE}/admin/publish-document`, {
+        publishReadyDocumentId: publishReadyDoc.id,
+        productId: linkFormData.productId,
+        version: linkFormData.version
       });
 
       if (response.data.success) {
-        await fetchDocuments();
-        // Reset form
-        setPublishParams(prev => ({
-          ...prev,
-          selectedLanguages: [],
-          versionName: ''
-        }));
-        setSelectedDocument('');
+        await fetchPublishedDocuments();
+        setShowLinkModal(false);
+      } else {
+        // Mock successful publishing
+        const product = products.find(p => p.id === linkFormData.productId);
+        if (product && publishReadyDoc) {
+          const newPublishedDoc: PublishedDocument = {
+            id: Date.now().toString(),
+            publishReadyDocumentId: publishReadyDoc.id,
+            productId: linkFormData.productId,
+            documentName: publishReadyDoc.documentName,
+            productName: product.name,
+            productCode: product.code,
+            language: linkFormData.language,
+            version: linkFormData.version,
+            url: `https://docs.dehn.com/products/${product.code.toLowerCase()}/language=${linkFormData.language}/version=${linkFormData.version}`,
+            publishedAt: new Date().toISOString(),
+            status: 'published'
+          };
+          setPublishedDocs([...publishedDocs, newPublishedDoc]);
+          setShowLinkModal(false);
+        }
       }
-    } catch (error: any) {
-      console.error('Publishing failed:', error);
-      alert(error.response?.data?.message || 'Publishing failed');
+    } catch (error) {
+      console.error('Failed to publish document:', error);
+      alert('Failed to publish document. Please try again.');
     } finally {
-      setPublishing(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(documentId);
-        return newSet;
-      });
+      setProcessing(null);
     }
   };
 
-  const downloadPublication = async (documentId: string, version: string) => {
+  const unpublishDocument = async (publishedDocId: string) => {
+    if (!confirm('Are you sure you want to unpublish this document?')) {
+      return;
+    }
+
     try {
-      const response = await axios.get(`${API_BASE}/admin/documents/${documentId}/publications/${version}/download`, {
-        responseType: 'blob'
-      });
+      setProcessing(`unpublish-${publishedDocId}`);
       
-      const doc = documents.find(d => d.id === documentId);
-      const publication = doc?.publications?.[version];
-      const extension = publication?.format || 'pdf';
+      const response = await axios.post(`${API_BASE}/admin/unpublish-document/${publishedDocId}`);
       
-      const blob = new Blob([response.data]);
-      const url = window.URL.createObjectURL(blob);
-      const a = window.document.createElement('a');
-      a.href = url;
-      a.download = `${doc?.originalName}_${version}.${extension}`;
-      window.document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      window.document.body.removeChild(a);
+      if (response.data.success) {
+        setPublishedDocs(publishedDocs.map(doc => 
+          doc.id === publishedDocId 
+            ? { ...doc, status: 'unpublished' as const }
+            : doc
+        ));
+      } else {
+        setPublishedDocs(publishedDocs.filter(doc => doc.id !== publishedDocId));
+      }
     } catch (error) {
-      console.error('Download failed:', error);
-      alert('Failed to download publication');
+      console.error('Failed to unpublish document:', error);
+      alert('Failed to unpublish document. Please try again.');
+    } finally {
+      setProcessing(null);
     }
   };
 
-  const copyPublicUrl = async (url: string) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      alert('URL copied to clipboard!');
-    } catch (error) {
-      console.error('Failed to copy URL:', error);
-      alert('Failed to copy URL');
-    }
-  };
+  // Filter functions
+  const filteredPublishReadyDocs = publishReadyDocs.filter(doc => {
+    const matchesSearch = searchTerm === '' || 
+      doc.documentName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesLanguage = languageFilter === '' || doc.language === languageFilter;
+    return matchesSearch && matchesLanguage;
+  });
 
-  const toggleLanguageSelection = (langCode: string) => {
-    setPublishParams(prev => ({
-      ...prev,
-      selectedLanguages: prev.selectedLanguages.includes(langCode)
-        ? prev.selectedLanguages.filter(l => l !== langCode)
-        : [...prev.selectedLanguages, langCode]
-    }));
-  };
+  const filteredPublishedDocs = publishedDocs.filter(doc => {
+    const matchesSearch = searchTerm === '' || 
+      doc.documentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doc.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doc.productCode.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesLanguage = languageFilter === '' || doc.language === languageFilter;
+    const matchesProduct = productFilter === '' || doc.productId === productFilter;
+    return matchesSearch && matchesLanguage && matchesProduct;
+  });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'translated':
-        return 'border-blue-200 bg-blue-50 text-blue-700';
-      case 'published':
-        return 'border-green-200 bg-green-50 text-green-700';
-      case 'failed':
-        return 'border-red-200 bg-red-50 text-red-700';
-      default:
-        return 'border-gray-200 bg-gray-50 text-gray-700';
-    }
-  };
+  // Get unique languages for filter
+  const allLanguages = [
+    ...new Set([
+      ...publishReadyDocs.map(d => d.language),
+      ...publishedDocs.map(d => d.language)
+    ])
+  ];
 
   if (loading) {
     return (
       <div className="admin-loading">
         <div className="admin-loading-content">
           <RefreshCw className="admin-loading-spinner" />
-          <span>Loading documents...</span>
+          <span>Loading publishing data...</span>
         </div>
       </div>
     );
@@ -209,307 +436,410 @@ export const PublishingPage: React.FC = () => {
       <div className="admin-section">
         <div className="admin-page-header">
           <div className="admin-page-title">
-            <Send className="admin-page-icon" />
-            <h1>Content Publishing</h1>
+            <Globe2 className="admin-page-icon" />
+            <h1>Document Publishing</h1>
           </div>
+          <button
+            onClick={() => openLinkModal()}
+            className="admin-btn primary"
+            disabled={publishReadyDocs.length === 0}
+          >
+            <Plus className="admin-btn-icon" />
+            Publish Document
+          </button>
         </div>
-        <p className="admin-section-description">
-          Publish translated documents in various formats. Generate PDFs, web pages, or structured data 
-          with multilingual content ready for distribution.
-        </p>
 
-        {documents.length === 0 ? (
-          <div className="admin-empty-state">
-            <Send className="admin-empty-icon" />
-            <h3 className="admin-empty-title">No documents ready</h3>
-            <p className="admin-empty-description">Complete translation process first to enable publishing.</p>
+        {/* Tab Navigation */}
+        <div className="admin-tabs">
+          <button
+            onClick={() => setActiveTab('ready')}
+            className={`admin-tab ${activeTab === 'ready' ? 'active' : ''}`}
+          >
+            <FileText className="admin-tab-icon" />
+            Publish Ready ({publishReadyDocs.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('published')}
+            className={`admin-tab ${activeTab === 'published' ? 'active' : ''}`}
+          >
+            <Globe2 className="admin-tab-icon" />
+            Published ({publishedDocs.length})
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div className="admin-filters">
+          <div className="filter-group">
+            <div className="search-box">
+              <Search className="search-icon" />
+              <input
+                type="text"
+                placeholder="Search documents..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+              />
+            </div>
           </div>
-        ) : (
-          <div className="admin-publishing-container">
-            {/* Publishing Configuration */}
-            {selectedDocument && (
-              <div className="admin-publishing-config">
-                <h3 className="admin-publishing-config-title">Publishing Configuration</h3>
-                
-                <div className="admin-publishing-form">
-                  {/* Left Column */}
-                  <div className="admin-publishing-settings">
-                    <div className="admin-form-group">
-                      <label className="admin-form-label">
-                        Version Name
-                      </label>
-                      <input
-                        type="text"
-                        value={publishParams.versionName}
-                        onChange={(e) => setPublishParams(prev => ({ ...prev, versionName: e.target.value }))}
-                        placeholder="e.g., v1.0, release-2024"
-                        className="admin-form-input"
-                      />
-                    </div>
+          
+          <div className="filter-group">
+            <Filter className="filter-icon" />
+            <select
+              value={languageFilter}
+              onChange={(e) => setLanguageFilter(e.target.value)}
+              className="filter-select"
+            >
+              <option value="">All Languages</option>
+              {allLanguages.map(lang => (
+                <option key={lang} value={lang}>{lang.toUpperCase()}</option>
+              ))}
+            </select>
+          </div>
 
-                    <div className="admin-form-group">
-                      <label className="admin-form-label">
-                        Output Format
-                      </label>
-                      <select
-                        value={publishParams.outputFormat}
-                        onChange={(e) => setPublishParams(prev => ({ ...prev, outputFormat: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          {activeTab === 'published' && (
+            <div className="filter-group">
+              <select
+                value={productFilter}
+                onChange={(e) => setProductFilter(e.target.value)}
+                className="filter-select"
+              >
+                <option value="">All Products</option>
+                {products.map(product => (
+                  <option key={product.id} value={product.id}>
+                    {product.name} ({product.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        {/* Documents awaiting preparation */}
+        {documents.length > 0 && publishReadyDocs.length === 0 && (
+          <div className="admin-info-section">
+            <h3>Documents Ready for Preparation</h3>
+            <p className="info-text">
+              These documents have been processed and are ready to be prepared for publishing.
+            </p>
+            <div className="preparation-list">
+              {documents.map(doc => (
+                <div key={doc.id} className="preparation-item">
+                  <div className="preparation-info">
+                    <h4>{doc.originalName}</h4>
+                    <div className="language-list">
+                      <span>Available languages: </span>
+                      {doc.availableLanguages.map(lang => (
+                        <span key={lang} className="language-tag">{lang.toUpperCase()}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="preparation-actions">
+                    {doc.availableLanguages.map(lang => (
+                      <button
+                        key={lang}
+                        onClick={() => prepareDocumentForPublishing(doc.id, lang)}
+                        disabled={preparingDocument === `${doc.id}-${lang}`}
+                        className="admin-btn secondary"
                       >
-                        {OUTPUT_FORMATS.map(format => (
-                          <option key={format.value} value={format.value}>
-                            {format.label}
-                          </option>
-                        ))}
-                      </select>
-                      {OUTPUT_FORMATS.find(f => f.value === publishParams.outputFormat) && (
-                        <p className="text-sm text-gray-600 mt-1">
-                          {OUTPUT_FORMATS.find(f => f.value === publishParams.outputFormat)?.description}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={publishParams.publicAccess}
-                          onChange={(e) => setPublishParams(prev => ({ ...prev, publicAccess: e.target.checked }))}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="ml-2 text-sm font-medium text-gray-700">Enable public access</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={publishParams.includeMetadata}
-                          onChange={(e) => setPublishParams(prev => ({ ...prev, includeMetadata: e.target.checked }))}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="ml-2 text-sm font-medium text-gray-700">Include metadata</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Right Column - Language Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Languages to Publish ({publishParams.selectedLanguages.length} selected)
-                    </label>
-                    <div className="max-h-32 overflow-y-auto border border-gray-300 rounded-md p-2 bg-white">
-                      {(() => {
-                        const doc = documents.find(d => d.id === selectedDocument);
-                        const availableLanguages = getAvailableLanguages(doc!);
-                        
-                        return availableLanguages.map(lang => (
-                          <label key={lang} className="flex items-center p-1 hover:bg-gray-50 rounded cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={publishParams.selectedLanguages.includes(lang)}
-                              onChange={() => toggleLanguageSelection(lang)}
-                              className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="text-sm font-medium">{lang.toUpperCase()}</span>
-                          </label>
-                        ));
-                      })()}
-                    </div>
+                        {preparingDocument === `${doc.id}-${lang}` ? (
+                          <>
+                            <RefreshCw className="admin-btn-icon animate-spin" />
+                            Preparing...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="admin-btn-icon" />
+                            Prepare {lang.toUpperCase()}
+                          </>
+                        )}
+                      </button>
+                    ))}
                   </div>
                 </div>
-
-                <div className="flex justify-end gap-2 mt-4">
-                  <button
-                    onClick={() => setSelectedDocument('')}
-                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => startPublishing(selectedDocument)}
-                    disabled={publishing.has(selectedDocument)}
-                    className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {publishing.has(selectedDocument) ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        Publishing...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4" />
-                        Publish
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Document List */}
-            <div className="space-y-4">
-              {documents.map((doc) => {
-                const availableLanguages = getAvailableLanguages(doc);
-                
-                return (
-                  <div key={doc.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-medium text-gray-900 truncate">
-                            {doc.originalName}
-                          </h3>
-                          <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(doc.status)}`}>
-                            {doc.status === 'published' ? (
-                              <CheckCircle className="w-3 h-3" />
-                            ) : (
-                              <Globe className="w-3 h-3" />
-                            )}
-                            <span className="capitalize">
-                              {doc.status === 'translated' ? 'Ready to Publish' : doc.status}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Available Languages */}
-                        <div className="mb-3">
-                          <span className="text-sm font-medium text-gray-700 mr-2">Available Languages:</span>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {availableLanguages.map(lang => (
-                              <span key={lang} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
-                                {lang.toUpperCase()}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Published Versions */}
-                        {doc.publications && Object.keys(doc.publications).length > 0 && (
-                          <div className="mb-3">
-                            <span className="text-sm font-medium text-gray-700 mb-2 block">Published Versions:</span>
-                            <div className="space-y-2">
-                              {Object.entries(doc.publications).map(([version, publication]) => (
-                                <div key={version} className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded">
-                                  <div>
-                                    <span className="font-medium text-green-900">{version}</span>
-                                    <span className="text-green-700 text-sm ml-2">
-                                      ({publication.languages.length} languages, {publication.format.toUpperCase()})
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={() => downloadPublication(doc.id, version)}
-                                      className="p-1 text-green-600 hover:text-green-800"
-                                      title="Download"
-                                    >
-                                      <Download className="w-4 h-4" />
-                                    </button>
-                                    {publication.url && (
-                                      <>
-                                        <button
-                                          onClick={() => copyPublicUrl(publication.url!)}
-                                          className="p-1 text-green-600 hover:text-green-800"
-                                          title="Copy public URL"
-                                        >
-                                          <Copy className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                          onClick={() => window.open(publication.url, '_blank')}
-                                          className="p-1 text-green-600 hover:text-green-800"
-                                          title="Open in new tab"
-                                        >
-                                          <ExternalLink className="w-4 h-4" />
-                                        </button>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 ml-4">
-                        {doc.status === 'translated' && availableLanguages.length > 0 && (
-                          <button
-                            onClick={() => {
-                              setSelectedDocument(doc.id);
-                              setPublishParams(prev => ({
-                                ...prev,
-                                selectedLanguages: [],
-                                versionName: `v${Object.keys(doc.publications || {}).length + 1}.0`
-                              }));
-                            }}
-                            className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-                          >
-                            <Send className="w-3 h-3" />
-                            Publish
-                          </button>
-                        )}
-                        
-                        {doc.status === 'published' && (
-                          <button
-                            className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                          >
-                            <Eye className="w-3 h-3" />
-                            View Publications
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              ))}
             </div>
           </div>
         )}
+
+        {/* Content based on active tab */}
+        {activeTab === 'ready' ? (
+          // Publish Ready Documents
+          filteredPublishReadyDocs.length === 0 ? (
+            <div className="admin-empty-state">
+              <FileText className="admin-empty-icon" />
+              <h3>No documents ready for publishing</h3>
+              <p>Prepare processed documents above to make them available for publishing.</p>
+            </div>
+          ) : (
+            <div className="admin-document-list">
+              {filteredPublishReadyDocs.map(doc => (
+                <div key={doc.id} className="admin-document-item">
+                  <div className="admin-document-header">
+                    <div className="admin-document-info">
+                      <div className="admin-document-title-row">
+                        <h3 className="admin-document-name">
+                          {doc.documentName}
+                        </h3>
+                        <div className="admin-status-badge status-ready">
+                          <CheckCircle className="admin-status-icon" />
+                          <span>Ready to Publish</span>
+                        </div>
+                      </div>
+
+                      <div className="document-meta">
+                        <div className="meta-item">
+                          <Languages className="meta-icon" />
+                          <span>{doc.language.toUpperCase()}</span>
+                        </div>
+                        <div className="meta-item">
+                          <FileText className="meta-icon" />
+                          <span>{doc.contentType}</span>
+                        </div>
+                        <div className="meta-item">
+                          <Clock className="meta-icon" />
+                          <span>Prepared {new Date(doc.generatedAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+
+                      <div className="admin-stats-grid">
+                        <div className="admin-stat info">
+                          <div className="stat-value">{doc.chunksCount}</div>
+                          <div className="stat-label">Content Chunks</div>
+                        </div>
+                        <div className="admin-stat success">
+                          <div className="stat-value">{doc.imagesCount}</div>
+                          <div className="stat-label">Images</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="admin-document-actions">
+                      <button
+                        onClick={() => openLinkModal(doc.id)}
+                        className="admin-btn primary"
+                      >
+                        <Link2 className="admin-btn-icon" />
+                        Link & Publish
+                      </button>
+                      
+                      <button className="admin-btn secondary">
+                        <Eye className="admin-btn-icon" />
+                        Preview
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          // Published Documents
+          filteredPublishedDocs.length === 0 ? (
+            <div className="admin-empty-state">
+              <Globe2 className="admin-empty-icon" />
+              <h3>No published documents</h3>
+              <p>Link documents with products and publish them to make them available.</p>
+            </div>
+          ) : (
+            <div className="admin-document-list">
+              {filteredPublishedDocs.map(doc => (
+                <div key={doc.id} className="admin-document-item">
+                  <div className="admin-document-header">
+                    <div className="admin-document-info">
+                      <div className="admin-document-title-row">
+                        <h3 className="admin-document-name">
+                          {doc.documentName}
+                        </h3>
+                        <div className={`admin-status-badge ${doc.status === 'published' ? 'status-success' : 'status-warning'}`}>
+                          {doc.status === 'published' ? (
+                            <CheckCircle className="admin-status-icon" />
+                          ) : (
+                            <Clock className="admin-status-icon" />
+                          )}
+                          <span>{doc.status}</span>
+                        </div>
+                      </div>
+
+                      <div className="document-meta">
+                        <div className="meta-item">
+                          <Package className="meta-icon" />
+                          <span>{doc.productName} ({doc.productCode})</span>
+                        </div>
+                        <div className="meta-item">
+                          <Languages className="meta-icon" />
+                          <span>{doc.language.toUpperCase()}</span>
+                        </div>
+                        <div className="meta-item">
+                          <span className="version-badge">{doc.version}</span>
+                        </div>
+                      </div>
+
+                      <div className="published-info">
+                        <div className="published-date">
+                          Published {new Date(doc.publishedAt).toLocaleDateString()}
+                        </div>
+                        <div className="published-url">
+                          <a href={doc.url} target="_blank" rel="noreferrer" className="url-link">
+                            {doc.url}
+                            <ExternalLink className="url-icon" />
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="admin-document-actions">
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="admin-btn secondary"
+                      >
+                        <Eye className="admin-btn-icon" />
+                        View Live
+                      </a>
+                      
+                      {doc.status === 'published' && (
+                        <button
+                          onClick={() => unpublishDocument(doc.id)}
+                          disabled={processing === `unpublish-${doc.id}`}
+                          className="admin-btn danger"
+                        >
+                          {processing === `unpublish-${doc.id}` ? (
+                            <RefreshCw className="admin-btn-icon animate-spin" />
+                          ) : (
+                            <X className="admin-btn-icon" />
+                          )}
+                          Unpublish
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        )}
       </div>
 
-      {/* Publishing Info */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-green-900 mb-2">
-          Publishing Process
-        </h3>
-        <div className="text-green-800 space-y-2">
-          <p><strong>1. Format Generation:</strong> Convert translations into target format (PDF, HTML, JSON, XML)</p>
-          <p><strong>2. Layout Reconstruction:</strong> Apply original layout and styling to translated content</p>
-          <p><strong>3. Quality Check:</strong> Validate output format and content integrity</p>
-          <p><strong>4. Version Management:</strong> Create versioned publications with metadata</p>
-          <p><strong>5. Access Control:</strong> Configure public/private access and distribution URLs</p>
+      {/* Statistics */}
+      <div className="admin-stats-section">
+        <h3>Publishing Overview</h3>
+        <div className="admin-stats-grid">
+          <div className="admin-stat-card info">
+            <div className="stat-value">{publishReadyDocs.length}</div>
+            <div className="stat-label">Ready to Publish</div>
+          </div>
+          <div className="admin-stat-card success">
+            <div className="stat-value">{publishedDocs.filter(d => d.status === 'published').length}</div>
+            <div className="stat-label">Currently Published</div>
+          </div>
+          <div className="admin-stat-card warning">
+            <div className="stat-value">{allLanguages.length}</div>
+            <div className="stat-label">Languages Available</div>
+          </div>
+          <div className="admin-stat-card purple">
+            <div className="stat-value">{products.filter(p => p.status === 'active').length}</div>
+            <div className="stat-label">Active Products</div>
+          </div>
         </div>
       </div>
 
-      {/* Publishing Stats */}
-      <div className="bg-gray-50 border rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Publishing Statistics
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="text-center p-4 bg-white rounded border">
-            <div className="font-medium text-blue-900">{documents.filter(d => d.status === 'translated').length}</div>
-            <div className="text-blue-600 text-sm">Ready to Publish</div>
-          </div>
-          <div className="text-center p-4 bg-white rounded border">
-            <div className="font-medium text-green-900">{documents.filter(d => d.status === 'published').length}</div>
-            <div className="text-green-600 text-sm">Published</div>
-          </div>
-          <div className="text-center p-4 bg-white rounded border">
-            <div className="font-medium text-purple-900">
-              {documents.reduce((acc, d) => acc + Object.keys(d.publications || {}).length, 0)}
+      {/* Link & Publish Modal */}
+      {showLinkModal && (
+        <div className="admin-modal-overlay" onClick={(e) => {
+          if (e.target === e.currentTarget) setShowLinkModal(false);
+        }}>
+          <div className="admin-modal">
+            <div className="admin-modal-header">
+              <h2>Link Document with Product & Publish</h2>
+              <button onClick={() => setShowLinkModal(false)} className="admin-modal-close">
+                <X />
+              </button>
             </div>
-            <div className="text-purple-600 text-sm">Total Versions</div>
-          </div>
-          <div className="text-center p-4 bg-white rounded border">
-            <div className="font-medium text-orange-900">
-              {documents.reduce((acc, d) => {
-                const langs = getAvailableLanguages(d);
-                return acc + langs.length;
-              }, 0)}
-            </div>
-            <div className="text-orange-600 text-sm">Available Languages</div>
+            
+            <form onSubmit={handleLinkAndPublish} className="admin-modal-content">
+              <div className="form-group">
+                <label htmlFor="document">Document</label>
+                <select
+                  id="document"
+                  value={`${linkFormData.documentId}-${linkFormData.language}`}
+                  onChange={(e) => {
+                    const [docId, lang] = e.target.value.split('-');
+                    setLinkFormData({...linkFormData, documentId: docId, language: lang});
+                  }}
+                  required
+                  className="form-select"
+                >
+                  <option value="">Select a document</option>
+                  {publishReadyDocs.map(doc => (
+                    <option key={`${doc.documentId}-${doc.language}`} value={`${doc.documentId}-${doc.language}`}>
+                      {doc.documentName} ({doc.language.toUpperCase()})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="product">Product *</label>
+                <select
+                  id="product"
+                  value={linkFormData.productId}
+                  onChange={(e) => setLinkFormData({...linkFormData, productId: e.target.value})}
+                  required
+                  className="form-select"
+                >
+                  <option value="">Select a product</option>
+                  {products.filter(p => p.status === 'active').map(product => (
+                    <option key={product.id} value={product.id}>
+                      {product.name} ({product.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="version">Version</label>
+                <input
+                  type="text"
+                  id="version"
+                  value={linkFormData.version}
+                  onChange={(e) => setLinkFormData({...linkFormData, version: e.target.value})}
+                  className="form-input"
+                  placeholder="e.g., v1.0, v2.1"
+                />
+              </div>
+
+              <div className="admin-modal-actions">
+                <button
+                  type="button"
+                  onClick={() => setShowLinkModal(false)}
+                  className="admin-btn secondary"
+                  disabled={processing === 'linking'}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="admin-btn primary"
+                  disabled={processing === 'linking'}
+                >
+                  {processing === 'linking' ? (
+                    <>
+                      <RefreshCw className="admin-btn-icon animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="admin-btn-icon" />
+                      Link & Publish
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

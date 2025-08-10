@@ -524,3 +524,108 @@ export interface AIAnalyzeDocumentRequest {
   prompt?: string;
   includeContent?: boolean;
 }
+
+// Product Management
+export interface Product {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  category: string;
+  status: 'active' | 'inactive' | 'discontinued';
+  createdAt: Date;
+  updatedAt: Date;
+  documentCount?: number;
+}
+
+export interface ProductCreateRequest {
+  name: string;
+  code: string;
+  description?: string;
+  category: string;
+  status?: 'active' | 'inactive' | 'discontinued';
+}
+
+export interface ProductUpdateRequest {
+  name?: string;
+  code?: string;
+  description?: string;
+  category?: string;
+  status?: 'active' | 'inactive' | 'discontinued';
+}
+
+// Publishing System - Three-tier architecture
+export interface PublishReadyDocument {
+  id: string;
+  documentId: string;
+  documentName: string;
+  language: string;
+  contentType: 'original' | 'translation';
+  chunksCount: number;
+  imagesCount: number;
+  status: 'ready' | 'preparing' | 'failed';
+  generatedAt: Date;
+  chunks: PublishChunk[];
+  metadata?: {
+    originalSize: number;
+    processedSize: number;
+    compressionRatio: number;
+    extractionMethod: string;
+  };
+}
+
+export interface PublishChunk {
+  id: string;
+  content: string;
+  pageNumbers: number[];
+  images?: string[];
+  metadata?: {
+    wordCount: number;
+    language?: string;
+    confidence?: number;
+  };
+}
+
+export interface PublishedDocument {
+  id: string;
+  publishReadyDocumentId: string;
+  productId: string;
+  documentName: string;
+  productName: string;
+  productCode: string;
+  language: string;
+  version: string;
+  url: string;
+  publishedAt: Date;
+  status: 'published' | 'unpublished';
+  metadata?: {
+    fileSize: number;
+    downloadCount: number;
+    lastAccessed?: Date;
+    seoTags?: string[];
+  };
+}
+
+// Publishing Requests
+export interface PrepareDocumentRequest {
+  documentId: string;
+  language: string;
+  includeImages?: boolean;
+  compressionLevel?: 'low' | 'medium' | 'high';
+}
+
+export interface PublishDocumentRequest {
+  publishReadyDocumentId: string;
+  productId: string;
+  version: string;
+  metadata?: {
+    seoTags?: string[];
+    customUrl?: string;
+    accessLevel?: 'public' | 'restricted';
+  };
+}
+
+export interface UnpublishDocumentRequest {
+  publishedDocumentId: string;
+  reason?: string;
+}

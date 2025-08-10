@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
 import { FileText, Settings } from 'lucide-react'
 import './App.css'
 import { DocumentsList } from './pages/DocumentsList'
@@ -12,13 +12,6 @@ const Navigation = () => {
   
   return (
     <nav>
-      <Link 
-        to="/" 
-        className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
-      >
-        <FileText className="nav-icon" />
-        Documents
-      </Link>
       <Link 
         to="/admin" 
         className={`nav-link ${location.pathname === '/admin' ? 'active' : ''}`}
@@ -63,9 +56,8 @@ function App() {
         
         <main className="app-main">
           <Routes>
-            <Route path="/" element={<DocumentsList />} />
-            <Route path="/document/:id" element={<DocumentDetail />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="*" element={<Navigate to="/admin" replace />} />
           </Routes>
         </main>
       </div>

@@ -117,6 +117,8 @@ async function connectToDatabase() {
 // Import and use routes
 import { authRouter } from './routes/auth';
 import { documentsRouter as adminDocumentsRouter } from './routes/admin/documents';
+import { productsRouter } from './routes/admin/products';
+import { publishingRouter } from './routes/admin/publishing';
 import { documentsRouter as publicDocumentsRouter } from './routes/public/documents';
 import { usersRouter } from './routes/admin/users';
 import { aiRouter } from './routes/ai';
@@ -132,8 +134,10 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // API routes
 app.use('/api/auth', authRouter);
 app.use('/api/admin/documents', adminDocumentsRouter);
+app.use('/api/admin/products', productsRouter);
 app.use('/api/admin/users', usersRouter);
 app.use('/api/admin/ai', aiRouter);
+app.use('/api/admin', publishingRouter); // Publishing endpoints (publish-ready-documents, published-documents, etc.)
 app.use('/api/documents', publicDocumentsRouter); // Public user routes
 app.use('/api/ai', aiRouter); // AI routes available for both admin and users
 
