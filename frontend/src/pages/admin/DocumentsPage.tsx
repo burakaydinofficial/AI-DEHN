@@ -367,11 +367,6 @@ export const DocumentsPage: React.FC = () => {
                       <div className="admin-date-info">
                         <Calendar className="admin-date-icon" />
                         <div className="admin-date-main">{new Date(doc.uploadedAt).toLocaleDateString()}</div>
-                        {doc.processedAt && (
-                          <div className="admin-date-sub">
-                            Processed: {new Date(doc.processedAt).toLocaleDateString()}
-                          </div>
-                        )}
                       </div>
                     </td>
                     <td>
