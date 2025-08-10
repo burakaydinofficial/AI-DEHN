@@ -1,28 +1,28 @@
 import { 
-  BarChart3,
-  Upload, 
-  FileText, 
-  Settings, 
+  Upload,
+  FileSearch, 
+  GitBranch, 
+  Languages, 
   Globe,
-  MessageSquare
+  Activity
 } from 'lucide-react';
 
 export const ADMIN_TABS = {
-  dashboard: 'dashboard',
-  ingestion: 'ingestion',
-  decomposition: 'decomposition',
-  enrichment: 'enrichment',
+  upload: 'upload',
+  processing: 'processing', 
+  reduction: 'reduction',
+  translation: 'translation',
   publishing: 'publishing',
-  feedback: 'feedback'
+  status: 'status'
 } as const;
 
 export type AdminTabType = typeof ADMIN_TABS[keyof typeof ADMIN_TABS];
 
 export const ADMIN_TAB_CONFIG = [
-  { id: ADMIN_TABS.dashboard, label: 'Dashboard', icon: BarChart3 },
-  { id: ADMIN_TABS.ingestion, label: 'Ingestion', icon: Upload },
-  { id: ADMIN_TABS.decomposition, label: 'Decomposition', icon: FileText },
-  { id: ADMIN_TABS.enrichment, label: 'Enrichment', icon: Settings },
+  { id: ADMIN_TABS.upload, label: 'Upload', icon: Upload },
+  { id: ADMIN_TABS.processing, label: 'Processing Status', icon: Activity },
+  { id: ADMIN_TABS.reduction, label: 'Content Reduction', icon: GitBranch },
+  { id: ADMIN_TABS.translation, label: 'Translation', icon: Languages },
   { id: ADMIN_TABS.publishing, label: 'Publishing', icon: Globe },
-  { id: ADMIN_TABS.feedback, label: 'Feedback Loop', icon: MessageSquare }
+  { id: ADMIN_TABS.status, label: 'Overview', icon: FileSearch }
 ] as const;

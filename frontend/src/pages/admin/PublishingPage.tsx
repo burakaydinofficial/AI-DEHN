@@ -1,154 +1,68 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Users,
-  Monitor,
-  Smartphone,
-  Headphones,
-  FileText,
+  Send, 
+  RefreshCw, 
+  CheckCircle,
+  Eye,
   Globe,
-  Search,
-  AlertTriangle,
-  Settings,
-  RefreshCw,
-  CheckCircle
+  Download,
+  Copy,
+  ExternalLink
 } from 'lucide-react';
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_ADMIN_API_BASE || 'http://localhost:3001/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
-interface AudienceType {
+interface Document {
   id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  color: string;
+  filename: string;
+  originalName: string;
+  status: 'translated' | 'published' | 'failed';
+  translations?: {
+    [lang: string]: {
+      status: 'pending' | 'completed' | 'failed';
+      completedAt?: string;
+      textGroupsCount?: number;
+    };
+  };
+  publications?: {
+    [version: string]: {
+      languages: string[];
+      publishedAt: string;
+      url?: string;
+      format: string;
+      status: 'active' | 'archived';
+    };
+  };
 }
 
-interface OutputFormat {
-  id: string;
-  name: string;
-  icon: React.ReactNode;
-  status: 'active' | 'coming-soon';
+interface PublishParams {
+  selectedLanguages: string[];
+  outputFormat: string;
+  versionName: string;
+  publicAccess: boolean;
+  includeMetadata: boolean;
 }
 
-interface AccessMethod {
-  id: string;
-  name: string;
-  icon: React.ReactNode;
-  description: string;
-}
-
-interface PublishingStatus {
-  id: string;
-  document: string;
-  version: string;
-  languages: number;
-  channels: string;
-  status: 'published' | 'updating' | 'pending';
-}
+const OUTPUT_FORMATS = [
+  { value: 'pdf', label: 'PDF Document', description: 'Recreate PDF with translated content' },
+  { value: 'json', label: 'JSON Data', description: 'Structured data format' },
+  { value: 'html', label: 'HTML Web Page', description: 'Interactive web format' },
+  { value: 'xml', label: 'XML Document', description: 'Structured markup format' }
+];
 
 export const PublishingPage: React.FC = () => {
-  const [documents, setDocuments] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const audienceTypes: AudienceType[] = [
-    {
-      id: 'pro',
-      name: 'Pro Installer',
-      description: 'Essential steps only',
-      icon: <Users className="w-5 h-5 text-green-600" />,
-      color: 'green'
-    },
-    {
-      id: 'apprentice',
-      name: 'Apprentice',
-      description: 'Detailed explanations',
-      icon: <Users className="w-5 h-5 text-blue-600" />,
-      color: 'blue'
-    },
-    {
-      id: 'inspector',
-      name: 'Inspector',
-      description: 'Compliance focus',
-      icon: <Users className="w-5 h-5 text-purple-600" />,
-      color: 'purple'
-    }
-  ];
-
-  const outputFormats: OutputFormat[] = [
-    {
-      id: 'web',
-      name: 'Web Portal',
-      icon: <Monitor className="w-5 h-5" />,
-      status: 'active'
-    },
-    {
-      id: 'mobile',
-      name: 'Mobile App',
-      icon: <Smartphone className="w-5 h-5" />,
-      status: 'active'
-    },
-    {
-      id: 'vr',
-      name: 'VR Training',
-      icon: <Headphones className="w-5 h-5" />,
-      status: 'coming-soon'
-    },
-    {
-      id: 'pdf',
-      name: 'PDF Export',
-      icon: <FileText className="w-5 h-5" />,
-      status: 'active'
-    }
-  ];
-
-  const accessMethods: AccessMethod[] = [
-    {
-      id: 'part-number',
-      name: 'Part Number',
-      icon: <Search className="w-5 h-5" />,
-      description: 'Search by component'
-    },
-    {
-      id: 'symptom',
-      name: 'By Symptom',
-      icon: <AlertTriangle className="w-5 h-5" />,
-      description: 'Problem-based lookup'
-    },
-    {
-      id: 'job-based',
-      name: 'Job-Based',
-      icon: <Settings className="w-5 h-5" />,
-      description: 'Task-oriented navigation'
-    }
-  ];
-
-  const mockPublishingStatus: PublishingStatus[] = [
-    {
-      id: '1',
-      document: 'Lightning Protection Manual',
-      version: 'v3.1',
-      languages: 12,
-      channels: 'All Channels',
-      status: 'published'
-    },
-    {
-      id: '2',
-      document: 'Surge Protector Guide',
-      version: 'v2.3',
-      languages: 8,
-      channels: 'Web + Mobile',
-      status: 'updating'
-    },
-    {
-      id: '3',
-      document: 'Grounding System Manual',
-      version: 'v1.5',
-      languages: 6,
-      channels: 'Web Only',
-      status: 'pending'
-    }
-  ];
+  const [publishing, setPublishing] = useState<Set<string>>(new Set());
+  const [publishParams, setPublishParams] = useState<PublishParams>({
+    selectedLanguages: [],
+    outputFormat: 'pdf',
+    versionName: '',
+    publicAccess: false,
+    includeMetadata: true
+  });
+  const [selectedDocument, setSelectedDocument] = useState<string>('');
 
   useEffect(() => {
     fetchDocuments();
@@ -156,12 +70,12 @@ export const PublishingPage: React.FC = () => {
 
   const fetchDocuments = async () => {
     try {
-      setLoading(true);
       const response = await axios.get(`${API_BASE}/admin/documents`);
-      const docs = response.data.data || [];
-      setDocuments(docs.filter((d: any) => 
-        d.status === 'chunked' || d.status === 'translated' || d.status === 'published'
-      ));
+      // Only show documents that are ready for publishing
+      const docs = (response.data.data || []).filter((doc: Document) => 
+        doc.status === 'translated' || doc.status === 'published'
+      );
+      setDocuments(docs);
     } catch (error) {
       console.error('Failed to fetch documents:', error);
     } finally {
@@ -169,12 +83,111 @@ export const PublishingPage: React.FC = () => {
     }
   };
 
+  const getAvailableLanguages = (doc: Document) => {
+    if (!doc.translations) return [];
+    return Object.entries(doc.translations)
+      .filter(([_, translation]) => translation.status === 'completed')
+      .map(([lang]) => lang);
+  };
+
+  const startPublishing = async (documentId: string) => {
+    if (!publishParams.versionName.trim()) {
+      alert('Please enter a version name');
+      return;
+    }
+
+    if (publishParams.selectedLanguages.length === 0) {
+      alert('Please select at least one language');
+      return;
+    }
+
+    try {
+      setPublishing(prev => new Set(prev).add(documentId));
+      
+      const response = await axios.post(`${API_BASE}/admin/documents/${documentId}/publish`, {
+        languages: publishParams.selectedLanguages,
+        outputFormat: publishParams.outputFormat,
+        versionName: publishParams.versionName,
+        publicAccess: publishParams.publicAccess,
+        includeMetadata: publishParams.includeMetadata
+      });
+
+      if (response.data.success) {
+        await fetchDocuments();
+        // Reset form
+        setPublishParams(prev => ({
+          ...prev,
+          selectedLanguages: [],
+          versionName: ''
+        }));
+        setSelectedDocument('');
+      }
+    } catch (error: any) {
+      console.error('Publishing failed:', error);
+      alert(error.response?.data?.message || 'Publishing failed');
+    } finally {
+      setPublishing(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(documentId);
+        return newSet;
+      });
+    }
+  };
+
+  const downloadPublication = async (documentId: string, version: string) => {
+    try {
+      const response = await axios.get(`${API_BASE}/admin/documents/${documentId}/publications/${version}/download`, {
+        responseType: 'blob'
+      });
+      
+      const doc = documents.find(d => d.id === documentId);
+      const publication = doc?.publications?.[version];
+      const extension = publication?.format || 'pdf';
+      
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      const a = window.document.createElement('a');
+      a.href = url;
+      a.download = `${doc?.originalName}_${version}.${extension}`;
+      window.document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      window.document.body.removeChild(a);
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Failed to download publication');
+    }
+  };
+
+  const copyPublicUrl = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      alert('URL copied to clipboard!');
+    } catch (error) {
+      console.error('Failed to copy URL:', error);
+      alert('Failed to copy URL');
+    }
+  };
+
+  const toggleLanguageSelection = (langCode: string) => {
+    setPublishParams(prev => ({
+      ...prev,
+      selectedLanguages: prev.selectedLanguages.includes(langCode)
+        ? prev.selectedLanguages.filter(l => l !== langCode)
+        : [...prev.selectedLanguages, langCode]
+    }));
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'published': return 'bg-green-50 text-green-800';
-      case 'updating': return 'bg-yellow-50 text-yellow-800';
-      case 'pending': return 'bg-blue-50 text-blue-800';
-      default: return 'bg-gray-50 text-gray-800';
+      case 'translated':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'published':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'failed':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
@@ -182,193 +195,311 @@ export const PublishingPage: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-600">Loading publishing data...</span>
+        <span className="ml-2 text-gray-600">Loading documents...</span>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="bg-white border rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">Multi-Channel Publishing</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          {/* Audience Types */}
-          <div className="text-center">
-            <h4 className="font-medium mb-3">Audience Types</h4>
-            <div className="space-y-2">
-              {audienceTypes.map((audience) => (
-                <div 
-                  key={audience.id} 
-                  className={`p-3 border rounded-lg bg-${audience.color}-50 hover:bg-${audience.color}-100 transition-colors cursor-pointer`}
-                >
-                  <div className="flex justify-center mb-1">
-                    {audience.icon}
-                  </div>
-                  <p className="text-sm font-medium">{audience.name}</p>
-                  <p className="text-xs text-gray-600">{audience.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {/* Output Formats */}
-          <div className="text-center">
-            <h4 className="font-medium mb-3">Output Formats</h4>
-            <div className="space-y-2">
-              {outputFormats.map((format) => (
-                <div 
-                  key={format.id} 
-                  className={`p-3 border rounded-lg transition-colors cursor-pointer ${
-                    format.status === 'active' 
-                      ? 'hover:bg-gray-50' 
-                      : 'opacity-50 cursor-not-allowed'
-                  }`}
-                >
-                  <div className="flex justify-center mb-1">
-                    {format.icon}
-                  </div>
-                  <p className="text-sm font-medium">{format.name}</p>
-                  {format.status === 'coming-soon' && (
-                    <p className="text-xs text-gray-500">Coming Soon</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {/* Access Methods */}
-          <div className="text-center">
-            <h4 className="font-medium mb-3">Access Methods</h4>
-            <div className="space-y-2">
-              {accessMethods.map((method) => (
-                <div key={method.id} className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                  <div className="flex justify-center mb-1">
-                    {method.icon}
-                  </div>
-                  <p className="text-sm font-medium">{method.name}</p>
-                  <p className="text-xs text-gray-600">{method.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+      <div className="bg-white rounded-lg border p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          Content Publishing
+        </h2>
+        <p className="text-gray-600 mb-6">
+          Publish translated documents in various formats. Generate PDFs, web pages, or structured data 
+          with multilingual content ready for distribution.
+        </p>
 
-        {/* Live Publishing Status */}
-        <div className="border rounded-lg p-4">
-          <h4 className="font-medium mb-3">Live Publishing Status</h4>
-          <div className="space-y-2">
-            {mockPublishingStatus.map((item) => (
-              <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                <div className="flex-1">
-                  <span className="text-sm font-medium">{item.document} {item.version}</span>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                    {item.languages} Languages
-                  </span>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                    {item.channels}
-                  </span>
-                  <span className={`text-xs px-2 py-1 rounded ${getStatusColor(item.status)}`}>
-                    {item.status === 'updating' ? (
-                      <div className="flex items-center gap-1">
-                        <RefreshCw className="w-3 h-3 animate-spin" />
-                        Updating...
-                      </div>
-                    ) : (
-                      item.status
-                    )}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Document Publishing Controls */}
-      <div className="bg-white border rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">Document Publishing Controls</h3>
-        
-        {documents.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {documents.map((doc) => (
-              <div key={doc.id} className="border rounded-lg p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h4 className="font-medium text-sm mb-1">{doc.filename}</h4>
-                    <p className="text-xs text-gray-600 capitalize">{doc.status}</p>
-                  </div>
-                  <FileText className="w-5 h-5 text-gray-400" />
-                </div>
-                
-                <div className="space-y-2 mb-3">
-                  <div className="flex justify-between text-xs">
-                    <span>Audience Coverage:</span>
-                    <span className="font-medium">3/3 types</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span>Output Formats:</span>
-                    <span className="font-medium">Web + Mobile</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span>Languages:</span>
-                    <span className="font-medium">1 (EN)</span>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2">
-                  {doc.status === 'published' ? (
-                    <>
-                      <button className="flex-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded hover:bg-green-200">
-                        <CheckCircle className="w-3 h-3 inline mr-1" />
-                        Published
-                      </button>
-                      <button className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200">
-                        Update
-                      </button>
-                    </>
-                  ) : (
-                    <button className="flex-1 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200">
-                      <Globe className="w-3 h-3 inline mr-1" />
-                      Publish Now
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+        {documents.length === 0 ? (
+          <div className="text-center py-12">
+            <Send className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No documents ready</h3>
+            <p className="text-gray-600">Complete translation process first to enable publishing.</p>
           </div>
         ) : (
-          <div className="text-center py-8">
-            <Globe className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">No documents ready for publishing</p>
-            <p className="text-sm text-gray-400">Complete the enrichment process first</p>
+          <div className="space-y-6">
+            {/* Publishing Configuration */}
+            {selectedDocument && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-medium text-blue-900 mb-4">Publishing Configuration</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Left Column */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Version Name
+                      </label>
+                      <input
+                        type="text"
+                        value={publishParams.versionName}
+                        onChange={(e) => setPublishParams(prev => ({ ...prev, versionName: e.target.value }))}
+                        placeholder="e.g., v1.0, release-2024"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Output Format
+                      </label>
+                      <select
+                        value={publishParams.outputFormat}
+                        onChange={(e) => setPublishParams(prev => ({ ...prev, outputFormat: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {OUTPUT_FORMATS.map(format => (
+                          <option key={format.value} value={format.value}>
+                            {format.label}
+                          </option>
+                        ))}
+                      </select>
+                      {OUTPUT_FORMATS.find(f => f.value === publishParams.outputFormat) && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          {OUTPUT_FORMATS.find(f => f.value === publishParams.outputFormat)?.description}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={publishParams.publicAccess}
+                          onChange={(e) => setPublishParams(prev => ({ ...prev, publicAccess: e.target.checked }))}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="ml-2 text-sm font-medium text-gray-700">Enable public access</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={publishParams.includeMetadata}
+                          onChange={(e) => setPublishParams(prev => ({ ...prev, includeMetadata: e.target.checked }))}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="ml-2 text-sm font-medium text-gray-700">Include metadata</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Right Column - Language Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Languages to Publish ({publishParams.selectedLanguages.length} selected)
+                    </label>
+                    <div className="max-h-32 overflow-y-auto border border-gray-300 rounded-md p-2 bg-white">
+                      {(() => {
+                        const doc = documents.find(d => d.id === selectedDocument);
+                        const availableLanguages = getAvailableLanguages(doc!);
+                        
+                        return availableLanguages.map(lang => (
+                          <label key={lang} className="flex items-center p-1 hover:bg-gray-50 rounded cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={publishParams.selectedLanguages.includes(lang)}
+                              onChange={() => toggleLanguageSelection(lang)}
+                              className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm font-medium">{lang.toUpperCase()}</span>
+                          </label>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 mt-4">
+                  <button
+                    onClick={() => setSelectedDocument('')}
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => startPublishing(selectedDocument)}
+                    disabled={publishing.has(selectedDocument)}
+                    className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {publishing.has(selectedDocument) ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        Publishing...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        Publish
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Document List */}
+            <div className="space-y-4">
+              {documents.map((doc) => {
+                const availableLanguages = getAvailableLanguages(doc);
+                
+                return (
+                  <div key={doc.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-medium text-gray-900 truncate">
+                            {doc.originalName}
+                          </h3>
+                          <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(doc.status)}`}>
+                            {doc.status === 'published' ? (
+                              <CheckCircle className="w-3 h-3" />
+                            ) : (
+                              <Globe className="w-3 h-3" />
+                            )}
+                            <span className="capitalize">
+                              {doc.status === 'translated' ? 'Ready to Publish' : doc.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Available Languages */}
+                        <div className="mb-3">
+                          <span className="text-sm font-medium text-gray-700 mr-2">Available Languages:</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {availableLanguages.map(lang => (
+                              <span key={lang} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
+                                {lang.toUpperCase()}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Published Versions */}
+                        {doc.publications && Object.keys(doc.publications).length > 0 && (
+                          <div className="mb-3">
+                            <span className="text-sm font-medium text-gray-700 mb-2 block">Published Versions:</span>
+                            <div className="space-y-2">
+                              {Object.entries(doc.publications).map(([version, publication]) => (
+                                <div key={version} className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded">
+                                  <div>
+                                    <span className="font-medium text-green-900">{version}</span>
+                                    <span className="text-green-700 text-sm ml-2">
+                                      ({publication.languages.length} languages, {publication.format.toUpperCase()})
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => downloadPublication(doc.id, version)}
+                                      className="p-1 text-green-600 hover:text-green-800"
+                                      title="Download"
+                                    >
+                                      <Download className="w-4 h-4" />
+                                    </button>
+                                    {publication.url && (
+                                      <>
+                                        <button
+                                          onClick={() => copyPublicUrl(publication.url!)}
+                                          className="p-1 text-green-600 hover:text-green-800"
+                                          title="Copy public URL"
+                                        >
+                                          <Copy className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                          onClick={() => window.open(publication.url, '_blank')}
+                                          className="p-1 text-green-600 hover:text-green-800"
+                                          title="Open in new tab"
+                                        >
+                                          <ExternalLink className="w-4 h-4" />
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 ml-4">
+                        {doc.status === 'translated' && availableLanguages.length > 0 && (
+                          <button
+                            onClick={() => {
+                              setSelectedDocument(doc.id);
+                              setPublishParams(prev => ({
+                                ...prev,
+                                selectedLanguages: [],
+                                versionName: `v${Object.keys(doc.publications || {}).length + 1}.0`
+                              }));
+                            }}
+                            className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                          >
+                            <Send className="w-3 h-3" />
+                            Publish
+                          </button>
+                        )}
+                        
+                        {doc.status === 'published' && (
+                          <button
+                            className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                          >
+                            <Eye className="w-3 h-3" />
+                            View Publications
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Publishing Statistics */}
-      <div className="bg-white border rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">Publishing Statistics</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-3 bg-blue-50 rounded">
-            <p className="text-2xl font-bold text-blue-600">{documents.length}</p>
-            <p className="text-xs text-blue-600">Ready Documents</p>
+      {/* Publishing Info */}
+      <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-green-900 mb-2">
+          Publishing Process
+        </h3>
+        <div className="text-green-800 space-y-2">
+          <p><strong>1. Format Generation:</strong> Convert translations into target format (PDF, HTML, JSON, XML)</p>
+          <p><strong>2. Layout Reconstruction:</strong> Apply original layout and styling to translated content</p>
+          <p><strong>3. Quality Check:</strong> Validate output format and content integrity</p>
+          <p><strong>4. Version Management:</strong> Create versioned publications with metadata</p>
+          <p><strong>5. Access Control:</strong> Configure public/private access and distribution URLs</p>
+        </div>
+      </div>
+
+      {/* Publishing Stats */}
+      <div className="bg-gray-50 border rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Publishing Statistics
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="text-center p-4 bg-white rounded border">
+            <div className="font-medium text-blue-900">{documents.filter(d => d.status === 'translated').length}</div>
+            <div className="text-blue-600 text-sm">Ready to Publish</div>
           </div>
-          <div className="text-center p-3 bg-green-50 rounded">
-            <p className="text-2xl font-bold text-green-600">
-              {documents.filter(d => d.status === 'published').length}
-            </p>
-            <p className="text-xs text-green-600">Published</p>
+          <div className="text-center p-4 bg-white rounded border">
+            <div className="font-medium text-green-900">{documents.filter(d => d.status === 'published').length}</div>
+            <div className="text-green-600 text-sm">Published</div>
           </div>
-          <div className="text-center p-3 bg-purple-50 rounded">
-            <p className="text-2xl font-bold text-purple-600">3</p>
-            <p className="text-xs text-purple-600">Output Channels</p>
+          <div className="text-center p-4 bg-white rounded border">
+            <div className="font-medium text-purple-900">
+              {documents.reduce((acc, d) => acc + Object.keys(d.publications || {}).length, 0)}
+            </div>
+            <div className="text-purple-600 text-sm">Total Versions</div>
           </div>
-          <div className="text-center p-3 bg-orange-50 rounded">
-            <p className="text-2xl font-bold text-orange-600">12</p>
-            <p className="text-xs text-orange-600">Max Languages</p>
+          <div className="text-center p-4 bg-white rounded border">
+            <div className="font-medium text-orange-900">
+              {documents.reduce((acc, d) => {
+                const langs = getAvailableLanguages(d);
+                return acc + langs.length;
+              }, 0)}
+            </div>
+            <div className="text-orange-600 text-sm">Available Languages</div>
           </div>
         </div>
       </div>

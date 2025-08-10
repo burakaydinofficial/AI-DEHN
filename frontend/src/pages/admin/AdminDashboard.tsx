@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { AdminLayout } from '../../components/AdminLayout';
-import { DashboardPage } from './DashboardPage';
-import { IngestionPage } from './IngestionPage';
-import { DecompositionPage } from './DecompositionPage';
-import { EnrichmentPage } from './EnrichmentPage';
+import { UploadPage } from './UploadPage';
+import { ProcessingStatusPage } from './ProcessingStatusPage';
+import { ContentReductionPage } from './ContentReductionPage';
+import { TranslationPage } from './TranslationPage';
 import { PublishingPage } from './PublishingPage';
-import { FeedbackPage } from './FeedbackPage';
+import { StatusOverviewPage } from './StatusOverviewPage';
 import { ADMIN_TABS, AdminTabType } from '../../constants/adminTabs';
 import '../../admin.css';
 
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<AdminTabType>(ADMIN_TABS.dashboard);
+  const [activeTab, setActiveTab] = useState<AdminTabType>(ADMIN_TABS.upload);
 
   const handleTabChange = (tab: AdminTabType) => {
     setActiveTab(tab);
@@ -18,20 +18,20 @@ export const AdminDashboard: React.FC = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case ADMIN_TABS.dashboard:
-        return <DashboardPage />;
-      case ADMIN_TABS.ingestion:
-        return <IngestionPage />;
-      case ADMIN_TABS.decomposition:
-        return <DecompositionPage />;
-      case ADMIN_TABS.enrichment:
-        return <EnrichmentPage />;
+      case ADMIN_TABS.upload:
+        return <UploadPage />;
+      case ADMIN_TABS.processing:
+        return <ProcessingStatusPage />;
+      case ADMIN_TABS.reduction:
+        return <ContentReductionPage />;
+      case ADMIN_TABS.translation:
+        return <TranslationPage />;
       case ADMIN_TABS.publishing:
         return <PublishingPage />;
-      case ADMIN_TABS.feedback:
-        return <FeedbackPage />;
+      case ADMIN_TABS.status:
+        return <StatusOverviewPage />;
       default:
-        return <DashboardPage />;
+        return <UploadPage />;
     }
   };
 
