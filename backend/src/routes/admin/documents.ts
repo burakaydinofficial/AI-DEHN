@@ -36,6 +36,35 @@ import {
   generateMarkdownChunks
 } from '../../utils/contentReductionProcessor';
 
+// Document status and stage constants
+const DOCUMENT_STATUS = {
+  PROCESSING: 'processing',
+  PROCESSED: 'processed', 
+  REDUCING: 'reducing',
+  REDUCED: 'reduced',
+  TRANSLATING: 'translating',
+  TRANSLATED: 'translated',
+  FAILED: 'failed'
+} as const;
+
+const PROCESSING_STAGE = {
+  CONTENT_REDUCTION: 'content-reduction',
+  CONTENT_REDUCTION_COMPLETE: 'content-reduction-complete',
+  TRANSLATION: 'translation'
+} as const;
+
+const AI_MODEL = {
+  GEMINI_2_5_FLASH: 'gemini-2.5-flash'
+} as const;
+
+const TRANSLATION_STRATEGY = {
+  CONTEXTUAL: 'contextual'
+} as const;
+
+const QUALITY_LEVEL = {
+  HIGH: 'high'
+} as const;
+
 export const documentsRouter = Router();
 
 // Configure multer for file uploads
@@ -74,7 +103,7 @@ documentsRouter.post('/upload', upload.single('file'), async (req: Request, res:
       size: file.size,
       uploadedBy: 'admin',
       uploadedAt: now,
-      status: 'processing',
+      status: DOCUMENT_STATUS.PROCESSING,
       storage: { originalPdf: originalUri, originalKey },
       stats: {}
     };
@@ -129,7 +158,7 @@ documentsRouter.post('/upload', upload.single('file'), async (req: Request, res:
 
     // Update DB with results
     const update: Partial<Document> = {
-      status: 'processed',
+      status: DOCUMENT_STATUS.PROCESSED,
       processedAt: new Date(),
       metadata: result.metadata,
       // also persist full text into the generic 'content' field from shared models
@@ -150,7 +179,7 @@ documentsRouter.post('/upload', upload.single('file'), async (req: Request, res:
     try {
       const db = getDb();
       const id = (req as any)._docId; // best-effort
-      if (id) await db.collection('documents').updateOne({ id }, { $set: { status: 'failed', error: String(error), processedAt: new Date() } });
+      if (id) await db.collection('documents').updateOne({ id }, { $set: { status: DOCUMENT_STATUS.FAILED, error: String(error), processedAt: new Date() } });
     } catch {}
     return next(error);
   }
@@ -302,7 +331,7 @@ documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: Ne
     }
 
     // Check if document has been processed (PDF → ZIP extraction complete)
-    if (document.status !== 'processed' || !document.storage?.analysisJson) {
+    if (document.status !== DOCUMENT_STATUS.PROCESSED || !document.storage?.analysisJson) {
       return res.status(400).json({
         success: false,
         error: 'Document must be processed first. PDF analysis data not found.',
@@ -313,7 +342,7 @@ documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: Ne
     // Update document status to show reduction is starting
     await db.collection('documents').updateOne(
       { id: documentId },
-      { $set: { status: 'reducing', processingStage: 'content-reduction' } }
+      { $set: { status: DOCUMENT_STATUS.REDUCING, processingStage: PROCESSING_STAGE.CONTENT_REDUCTION } }
     );
 
     // Load the analysis JSON containing extracted PDF content
@@ -361,8 +390,8 @@ documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: Ne
       { id: documentId },
       {
         $set: {
-          status: 'reduced',
-          processingStage: 'content-reduction-complete',
+          status: DOCUMENT_STATUS.REDUCED,
+          processingStage: PROCESSING_STAGE.CONTENT_REDUCTION_COMPLETE,
           contentReduction: {
             totalGroups: reductionResult.totalGroups,
             languagesDetected: reductionResult.languagesDetected,
@@ -388,7 +417,7 @@ documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: Ne
         processedAt: new Date(),
         hasAiLogs: Boolean(aiLogsKey),
         chunksGenerated: chunksResult.totalChunks,
-        processingModel: 'gemini-2.5-flash'
+        processingModel: AI_MODEL.GEMINI_2_5_FLASH
       },
       message: 'Content reduction completed successfully',
       timestamp: new Date()
@@ -402,7 +431,7 @@ documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: Ne
         { id: req.params.id },
         { 
           $set: { 
-            status: 'failed', 
+            status: DOCUMENT_STATUS.FAILED, 
             error: error instanceof Error ? error.message : 'Content reduction failed',
             processedAt: new Date() 
           } 
@@ -640,7 +669,7 @@ documentsRouter.post('/:id/translate', async (req: Request, res: Response, next:
     }
 
     // Check if document has content reduction completed
-    if (document.status !== 'reduced' && document.status !== 'translated') {
+    if (document.status !== DOCUMENT_STATUS.REDUCED && document.status !== DOCUMENT_STATUS.TRANSLATED) {
       return res.status(400).json({
         success: false,
         error: `Document must complete content reduction before translation. Current status: ${document.status}`,
@@ -678,8 +707,8 @@ documentsRouter.post('/:id/translate', async (req: Request, res: Response, next:
       { id: documentId },
       { 
         $set: { 
-          status: 'processing',
-          processingStage: 'translation',
+          status: DOCUMENT_STATUS.PROCESSING,
+          processingStage: PROCESSING_STAGE.TRANSLATION,
           processedAt: new Date()
         } 
       }
@@ -751,7 +780,7 @@ documentsRouter.post('/:id/translate', async (req: Request, res: Response, next:
           textReference: detectedSourceLang,
           generatedAt: new Date(),
           metadata: {
-            aiModel: 'gemini-2.5-flash',
+            aiModel: AI_MODEL.GEMINI_2_5_FLASH,
             processingTime,
             contextLanguages: contentReductionData.languagesDetected || [],
             qualityScore: calculateQualityScore(translatedGroups, contentReductionData.groups || [])
@@ -782,9 +811,9 @@ documentsRouter.post('/:id/translate', async (req: Request, res: Response, next:
           sourceTextLang: detectedSourceLang,
           version: 'generated',
           metadata: {
-            aiModel: 'gemini-2.5-flash',
-            translationStrategy: 'contextual',
-            qualityLevel: 'high',
+            aiModel: AI_MODEL.GEMINI_2_5_FLASH,
+            translationStrategy: TRANSLATION_STRATEGY.CONTEXTUAL,
+            qualityLevel: QUALITY_LEVEL.HIGH,
             processingTime,
             groupCount: translatedGroups.length
           }
@@ -803,7 +832,7 @@ documentsRouter.post('/:id/translate', async (req: Request, res: Response, next:
     // Update document with translation results
     const updateData: any = {
       $set: {
-        status: translationArtifacts.length > 0 ? 'translated' : 'failed',
+        status: translationArtifacts.length > 0 ? DOCUMENT_STATUS.TRANSLATED : DOCUMENT_STATUS.FAILED,
         processedAt: new Date()
       }
     };
@@ -838,7 +867,7 @@ documentsRouter.post('/:id/translate', async (req: Request, res: Response, next:
         { id: req.params.id },
         { 
           $set: { 
-            status: 'failed', 
+            status: DOCUMENT_STATUS.FAILED, 
             error: error instanceof Error ? error.message : 'Translation failed',
             processedAt: new Date() 
           } 

@@ -35,6 +35,22 @@ This is a multi-service document processing application built for a hackathon. T
 - Use async/await instead of Promise chains
 - Use proper error handling with try/catch blocks
 - Include comprehensive TypeScript types
+- **FORBIDDEN: Never use hardcoded string literals for status, stage, or enum-like values**
+- **REQUIRED: Always use `as const` objects for constants that represent enum-like values**
+
+### Constants and Enums
+```typescript
+// ✅ CORRECT - Use as const objects
+const DOCUMENT_STATUS = {
+  PROCESSING: 'processing',
+  PROCESSED: 'processed',
+  FAILED: 'failed'
+} as const;
+
+// ❌ FORBIDDEN - Never use hardcoded strings
+status: 'processing' // This is forbidden
+status: DOCUMENT_STATUS.PROCESSING // This is required
+```
 
 ### API Design
 - All APIs should follow RESTful conventions
