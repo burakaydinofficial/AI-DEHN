@@ -14,22 +14,15 @@ import './AdminPages.css';
 import type { 
   AILogEntry, 
   ContentReductionResult, 
-  ChunksResult
+  ChunksResult,
+  Document as BaseDocument
 } from '../../types/api';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
-interface Document {
-  id: string;
-  filename: string;
-  originalName: string;
+// Extended Document interface for content reduction page
+interface Document extends Omit<BaseDocument, 'status' | 'contentReduction'> {
   status: 'processed' | 'reducing' | 'reduced' | 'failed';
-  availableLanguages?: string[];
-  stats?: {
-    pageCount?: number;
-    languagesDetected?: number;
-    textGroupsCount?: number;
-  };
   contentReduction?: {
     totalGroups: number;
     languagesDetected: string[];
@@ -64,6 +57,22 @@ export const ContentReductionPage: React.FC = () => {
   useEffect(() => {
     fetchDocuments();
   }, []);
+
+  // Add escape key listener for modals
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showAiLogs) {
+          closeAiLogsView();
+        } else if (viewingDetails) {
+          closeDetailsView();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showAiLogs, viewingDetails]);
 
   const fetchDocuments = async () => {
     try {
@@ -190,7 +199,7 @@ Chunks generated: ${result.chunksGenerated}`);
       console.log('AI logs response:', response.data);
       
       if (response.data.success) {
-        setAiLogs(response.data.data);
+        setAiLogs(response.data.data.aiLogs || []);
       } else {
         throw new Error(response.data.error || 'Failed to load AI logs');
       }
@@ -376,7 +385,7 @@ Chunks generated: ${result.chunksGenerated}`);
                           View Results
                         </button>
                         
-                        {doc.contentReduction?.hasAiLogs && (
+                        {(doc.contentReduction?.hasAiLogs || doc.storage?.aiLogsKey) && (
                           <button
                             onClick={() => viewAiLogs(doc.id)}
                             className="admin-btn secondary"
@@ -459,7 +468,9 @@ Chunks generated: ${result.chunksGenerated}`);
 
       {/* Reduction Details Modal */}
       {viewingDetails && (
-        <div className="admin-modal-overlay">
+        <div className="admin-modal-overlay" onClick={(e) => {
+          if (e.target === e.currentTarget) closeDetailsView();
+        }}>
           <div className="admin-modal large">
             <div className="admin-modal-header">
               <h2>Content Reduction Details</h2>
@@ -587,7 +598,9 @@ Chunks generated: ${result.chunksGenerated}`);
 
       {/* AI Logs Modal */}
       {showAiLogs && (
-        <div className="admin-modal-overlay">
+        <div className="admin-modal-overlay" onClick={(e) => {
+          if (e.target === e.currentTarget) closeAiLogsView();
+        }}>
           <div className="admin-modal large">
             <div className="admin-modal-header">
               <h2>AI Processing Logs</h2>

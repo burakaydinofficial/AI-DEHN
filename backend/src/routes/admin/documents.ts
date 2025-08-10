@@ -363,7 +363,7 @@ documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: Ne
             totalGroups: reductionResult.totalGroups,
             languagesDetected: reductionResult.languagesDetected,
             processedAt: new Date(),
-            hasAiLogs: reductionResult.aiLogs && reductionResult.aiLogs.length > 0
+            hasAiLogs: Boolean(aiLogsKey)
           },
           'storage.reducedJson': reducedKey,
           'storage.chunksJson': chunksKey,
@@ -382,7 +382,7 @@ documentsRouter.post('/:id/reduce', async (req: Request, res: Response, next: Ne
         totalGroups: reductionResult.totalGroups,
         languagesDetected: reductionResult.languagesDetected,
         processedAt: new Date(),
-        hasAiLogs: reductionResult.aiLogs && reductionResult.aiLogs.length > 0,
+        hasAiLogs: Boolean(aiLogsKey),
         chunksGenerated: chunksResult.totalChunks,
         processingModel: 'gemini-1.5-pro'
       },

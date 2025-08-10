@@ -221,6 +221,7 @@ export interface StoragePaths {
   reducedKey?: string;   // private bucket key
   chunksJson?: string;   // private bucket URI for markdown chunks JSON
   chunksKey?: string;    // private bucket key
+  aiLogsKey?: string;    // private bucket key for AI processing logs
   imagesPrefix?: string; // private bucket prefix for images/
   translationsPrefix?: string; // private bucket prefix for translations/
 }
