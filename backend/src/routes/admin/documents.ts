@@ -205,6 +205,48 @@ documentsRouter.delete('/:id', async (req: Request, res: Response, next: NextFun
   }
 });
 
+// Rename document
+documentsRouter.put('/:id/rename', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { newName } = req.body;
+    
+    if (!newName || typeof newName !== 'string' || !newName.trim()) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'New name is required and must be a non-empty string', 
+        timestamp: new Date() 
+      } as ApiResponse);
+    }
+
+    const db = getDb();
+    const result = await db.collection('documents').updateOne(
+      { id: req.params.id },
+      { 
+        $set: { 
+          originalName: newName.trim(),
+          updatedAt: new Date()
+        } 
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Document not found', 
+        timestamp: new Date() 
+      } as ApiResponse);
+    }
+
+    return res.json({ 
+      success: true, 
+      message: 'Document renamed successfully', 
+      timestamp: new Date() 
+    } as ApiResponse);
+  } catch (error) {
+    return next(error);
+  }
+});
+
 // Upload generated translation artifact to private bucket
 documentsRouter.post('/:id/translations', upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
   try {

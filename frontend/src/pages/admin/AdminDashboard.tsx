@@ -5,6 +5,7 @@ import { ProcessingStatusPage } from './ProcessingStatusPage';
 import { ContentReductionPage } from './ContentReductionPage';
 import { TranslationPage } from './TranslationPage';
 import { PublishingPage } from './PublishingPage';
+import { InventoryPage } from './InventoryPage';
 import { StatusOverviewPage } from './StatusOverviewPage';
 import { ADMIN_TABS, AdminTabType } from '../../constants/adminTabs';
 import '../../admin.css';
@@ -28,6 +29,8 @@ export const AdminDashboard: React.FC = () => {
         return <TranslationPage />;
       case ADMIN_TABS.publishing:
         return <PublishingPage />;
+      case ADMIN_TABS.inventory:
+        return <InventoryPage />;
       case ADMIN_TABS.status:
         return <StatusOverviewPage />;
       default:

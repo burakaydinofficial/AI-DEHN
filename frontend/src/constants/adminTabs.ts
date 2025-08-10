@@ -4,7 +4,8 @@ import {
   GitBranch, 
   Languages, 
   Globe,
-  Activity
+  Activity,
+  FolderOpen
 } from 'lucide-react';
 
 export const ADMIN_TABS = {
@@ -13,6 +14,7 @@ export const ADMIN_TABS = {
   reduction: 'reduction',
   translation: 'translation',
   publishing: 'publishing',
+  inventory: 'inventory',
   status: 'status'
 } as const;
 
@@ -24,5 +26,6 @@ export const ADMIN_TAB_CONFIG = [
   { id: ADMIN_TABS.reduction, label: 'Content Reduction', icon: GitBranch },
   { id: ADMIN_TABS.translation, label: 'Translation', icon: Languages },
   { id: ADMIN_TABS.publishing, label: 'Publishing', icon: Globe },
+  { id: ADMIN_TABS.inventory, label: 'Inventory', icon: FolderOpen },
   { id: ADMIN_TABS.status, label: 'Overview', icon: FileSearch }
 ] as const;
