@@ -138,13 +138,13 @@ export function DocumentDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="document-detail">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Link to="/documents" className="text-gray-500 hover:text-gray-700 transition-colors">
-              <ArrowLeft className="w-5 h-5" />
+      <div className="document-detail-header">
+        <div className="document-detail-header-content">
+          <div className="flex items-center gap-4">
+            <Link to="/documents" className="text-gray-500 hover-text-gray-700 transition-colors">
+              <ArrowLeft className="icon-sm" />
             </Link>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{doc.originalName || doc.filename}</h1>
@@ -152,17 +152,17 @@ export function DocumentDetail() {
               <p className="text-xs text-gray-400">Uploaded {new Date(doc.uploadedAt).toLocaleString()}</p>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center gap-3">
             <span
               className={clsx(
-                'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium',
+                'badge badge-sm',
                 {
-                  'bg-blue-100 text-blue-800': doc.status === 'uploaded',
-                  'bg-green-100 text-green-800': doc.status === 'processed' || doc.status === 'published',
-                  'bg-yellow-100 text-yellow-800': doc.status === 'processing',
-                  'bg-red-100 text-red-800': doc.status === 'failed',
-                  'bg-purple-100 text-purple-800': doc.status === 'reduced',
-                  'bg-cyan-100 text-cyan-800': doc.status === 'chunked' || doc.status === 'translated'
+                  'badge-blue': doc.status === 'uploaded',
+                  'badge-green': doc.status === 'processed' || doc.status === 'published',
+                  'badge-yellow': doc.status === 'processing',
+                  'badge-red': doc.status === 'failed',
+                  'badge-purple': doc.status === 'reduced',
+                  'badge-cyan': doc.status === 'chunked' || doc.status === 'translated'
                 }
               )}
             >
@@ -178,42 +178,42 @@ export function DocumentDetail() {
             </span>
             <button
               onClick={refresh}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="btn btn-secondary btn-sm"
             >
-              <RefreshCw className="w-4 h-4 mr-2" />
+              <RefreshCw className="icon-xs mr-2" />
               Refresh
             </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="document-detail-container">
         {/* Processing Pipeline */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-8">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-              <Settings className="w-5 h-5 mr-2 text-blue-600" />
+        <div className="card mb-8">
+          <div className="card-header">
+            <h2 className="card-title">
+              <Settings className="icon-sm mr-2 text-blue-600" />
               Processing Pipeline
             </h2>
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <div className="card-body">
+            <div className="processing-grid">
               <button
                 onClick={triggerReduce}
                 disabled={!doc.storage?.analysisKey || processing === 'reduce'}
                 className={clsx(
-                  'flex items-center justify-center px-4 py-3 border rounded-lg text-sm font-medium transition-all duration-200',
+                  'processing-btn',
                   processing === 'reduce'
-                    ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                    ? 'processing-btn-disabled-loading'
                     : !doc.storage?.analysisKey
-                    ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                    : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:border-green-300'
+                    ? 'processing-btn-disabled'
+                    : 'processing-btn-green'
                 )}
               >
                 {processing === 'reduce' ? (
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  <RefreshCw className="icon-xs mr-2 animate-spin" />
                 ) : (
-                  <Settings className="w-4 h-4 mr-2" />
+                  <Settings className="icon-xs mr-2" />
                 )}
                 {processing === 'reduce' ? 'Processing...' : 'Create Reduced JSON'}
               </button>
@@ -222,41 +222,41 @@ export function DocumentDetail() {
                 onClick={triggerChunks}
                 disabled={(!doc.storage?.reducedKey && !doc.storage?.analysisKey) || processing === 'chunks'}
                 className={clsx(
-                  'flex items-center justify-center px-4 py-3 border rounded-lg text-sm font-medium transition-all duration-200',
+                  'processing-btn',
                   processing === 'chunks'
-                    ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                    ? 'processing-btn-disabled-loading'
                     : (!doc.storage?.reducedKey && !doc.storage?.analysisKey)
-                    ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                    : 'border-yellow-200 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300'
+                    ? 'processing-btn-disabled'
+                    : 'processing-btn-yellow'
                 )}
               >
                 {processing === 'chunks' ? (
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  <RefreshCw className="icon-xs mr-2 animate-spin" />
                 ) : (
-                  <Grid className="w-4 h-4 mr-2" />
+                  <Grid className="icon-xs mr-2" />
                 )}
                 {processing === 'chunks' ? 'Processing...' : 'Generate Chunks'}
               </button>
 
-              <div className="flex flex-col space-y-2">
-                <div className="text-xs font-medium text-gray-700 mb-1">Translations</div>
-                <div className="grid grid-cols-3 gap-1">
+              <div className="translation-section">
+                <div className="translation-label">Translations</div>
+                <div className="translation-grid">
                   {['de', 'fr', 'es'].map((lang) => (
                     <button
                       key={lang}
                       onClick={() => triggerTranslate(lang)}
                       disabled={!canGenerate || processing === `translate-${lang}`}
                       className={clsx(
-                        'flex items-center justify-center px-2 py-2 border rounded text-xs font-medium transition-all duration-200',
+                        'translation-btn',
                         processing === `translate-${lang}`
-                          ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                          ? 'translation-btn-disabled-loading'
                           : !canGenerate
-                          ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                          : 'border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 hover:border-cyan-300'
+                          ? 'translation-btn-disabled'
+                          : 'translation-btn-cyan'
                       )}
                     >
                       {processing === `translate-${lang}` ? (
-                        <RefreshCw className="w-3 h-3 animate-spin" />
+                        <RefreshCw className="icon-xs animate-spin" />
                       ) : (
                         lang.toUpperCase()
                       )}
@@ -267,30 +267,30 @@ export function DocumentDetail() {
             </div>
 
             {/* Status Overview */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-sm font-medium text-gray-900 mb-3">Processing Status</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div className="flex items-center">
-                  <CheckCircle className={clsx('w-4 h-4 mr-2', doc.storage?.analysisJson ? 'text-green-500' : 'text-gray-300')} />
-                  <span className={doc.storage?.analysisJson ? 'text-green-700' : 'text-gray-500'}>
+            <div className="status-overview">
+              <h3 className="status-overview-title">Processing Status</h3>
+              <div className="status-grid">
+                <div className="status-item">
+                  <CheckCircle className={clsx('icon-xs mr-2', doc.storage?.analysisJson ? 'status-icon-ready' : 'status-icon-pending')} />
+                  <span className={doc.storage?.analysisJson ? 'status-text-ready' : 'status-text-pending'}>
                     Analysis {doc.storage?.analysisJson ? 'Ready' : 'Pending'}
                   </span>
                 </div>
-                <div className="flex items-center">
-                  <CheckCircle className={clsx('w-4 h-4 mr-2', doc.storage?.reducedJson ? 'text-green-500' : 'text-gray-300')} />
-                  <span className={doc.storage?.reducedJson ? 'text-green-700' : 'text-gray-500'}>
+                <div className="status-item">
+                  <CheckCircle className={clsx('icon-xs mr-2', doc.storage?.reducedJson ? 'status-icon-ready' : 'status-icon-pending')} />
+                  <span className={doc.storage?.reducedJson ? 'status-text-ready' : 'status-text-pending'}>
                     Reduced {doc.storage?.reducedJson ? 'Ready' : 'Pending'}
                   </span>
                 </div>
-                <div className="flex items-center">
-                  <CheckCircle className={clsx('w-4 h-4 mr-2', doc.storage?.chunksJson ? 'text-green-500' : 'text-gray-300')} />
-                  <span className={doc.storage?.chunksJson ? 'text-green-700' : 'text-gray-500'}>
+                <div className="status-item">
+                  <CheckCircle className={clsx('icon-xs mr-2', doc.storage?.chunksJson ? 'status-icon-ready' : 'status-icon-pending')} />
+                  <span className={doc.storage?.chunksJson ? 'status-text-ready' : 'status-text-pending'}>
                     Chunks {doc.storage?.chunksJson ? 'Ready' : 'Pending'}
                   </span>
                 </div>
-                <div className="flex items-center">
-                  <Upload className={clsx('w-4 h-4 mr-2', doc.storage?.imagesPrefix ? 'text-blue-500' : 'text-gray-300')} />
-                  <span className={doc.storage?.imagesPrefix ? 'text-blue-700' : 'text-gray-500'}>
+                <div className="status-item">
+                  <Upload className={clsx('icon-xs mr-2', doc.storage?.imagesPrefix ? 'text-blue-500' : 'status-icon-pending')} />
+                  <span className={doc.storage?.imagesPrefix ? 'text-blue-700' : 'status-text-pending'}>
                     Images {doc.storage?.imagesPrefix ? 'Uploaded' : 'None'}
                   </span>
                 </div>
