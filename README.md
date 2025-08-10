@@ -8,28 +8,44 @@ A **Docker Compose** based document processing platform that enables multi-langu
 - Docker and Docker Compose
 - Node.js 18+ (for development)
 
-### 1. Clone and Setup
+### 1. Initial Setup
 ```bash
+# Clone the repository
 git clone <repository-url>
 cd DEHN
+
+# Install dependencies
+npm install
+
+# Create environment file
 cp .env.example .env
-# Edit .env with your configuration
 ```
 
-### 2. Start with Docker Compose
+### 2. Configure Environment
+1. Open the `.env` file you just created
+2. Set required environment variables:
+   - `GEMINI_API_KEY`: Your Google Gemini AI API key
+   - `JWT_SECRET`: A secure secret key for authentication
+   - Other variables can use default values for development
+
+### 3. Start the Application
 ```bash
-# Start all services
-docker compose up -d
-
-# View logs
-docker compose logs -f
+# Start all services (MongoDB, Backend, Frontend, PDF Processor)
+npm run dev
 ```
 
-### 3. Access the Application
+### 4. Access the Application
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:3001  
 - **PDF Processor**: http://localhost:3002
 - **MongoDB**: localhost:27017
+
+### Troubleshooting
+If you encounter any issues:
+1. Make sure all required environment variables are set in `.env`
+2. Check if Docker is running
+3. Ensure ports 3000, 3001, 3002, and 27017 are available
+4. Check the logs using `docker compose logs -f`
 
 ## 📁 Project Structure
 
