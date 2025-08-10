@@ -38,6 +38,7 @@ interface UploadedDocument {
 export const UploadPage: React.FC = () => {
   const [dragActive, setDragActive] = useState(false);
   const [uploads, setUploads] = useState<UploadProgress[]>([]);
+  const [isProcessingClick, setIsProcessingClick] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -60,10 +61,27 @@ export const UploadPage: React.FC = () => {
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Reset processing state when files are actually selected
+    setIsProcessingClick(false);
+    
     if (e.target.files) {
       const files = Array.from(e.target.files);
+      console.log('Files selected:', files.map(f => ({ name: f.name, size: f.size, type: f.type })));
       handleFiles(files);
+      // Reset input value to allow selecting the same file again
+      e.target.value = '';
     }
+  };
+
+  const handleDropZoneClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Prevent rapid multiple clicks
+    if (isProcessingClick) return;
+    
+    setIsProcessingClick(true);
+    fileInputRef.current?.click();
   };
 
   const handleFiles = (files: File[]) => {
@@ -83,6 +101,8 @@ export const UploadPage: React.FC = () => {
   };
 
   const uploadFile = async (file: File) => {
+    console.log('Uploading file:', { name: file.name, size: file.size, type: file.type });
+    
     const uploadProgress: UploadProgress = {
       filename: file.name,
       progress: 0,
@@ -94,6 +114,8 @@ export const UploadPage: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      
+      console.log('FormData created, file appended:', file.name);
 
       const response = await axios.post(`${API_BASE}/admin/documents/upload`, formData, {
         headers: {
@@ -102,6 +124,7 @@ export const UploadPage: React.FC = () => {
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
             const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            console.log(`Upload progress for ${file.name}: ${progress}%`);
             setUploads(prev => prev.map(upload => 
               upload.filename === file.name && upload.status === 'uploading'
                 ? { ...upload, progress }
@@ -110,6 +133,8 @@ export const UploadPage: React.FC = () => {
           }
         }
       });
+
+      console.log('Upload response:', response.data);
 
       if (response.data.success) {
         setUploads(prev => prev.map(upload => 
@@ -128,12 +153,14 @@ export const UploadPage: React.FC = () => {
       }
 
     } catch (error: any) {
+      console.error('Upload error:', error);
+      console.error('Error response:', error.response?.data);
       setUploads(prev => prev.map(upload => 
         upload.filename === file.name
           ? { 
               ...upload, 
               status: 'error', 
-              error: error.response?.data?.message || 'Upload failed' 
+              error: error.response?.data?.message || error.message || 'Upload failed' 
             }
           : upload
       ));
@@ -234,13 +261,15 @@ export const UploadPage: React.FC = () => {
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
             dragActive 
               ? 'border-blue-500 bg-blue-50' 
+              : isProcessingClick
+              ? 'border-gray-400 bg-gray-50 opacity-75'
               : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
-          }`}
+          } ${isProcessingClick ? 'pointer-events-none' : ''}`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
+          onClick={handleDropZoneClick}
         >
           <Upload className={`w-12 h-12 mx-auto mb-4 ${
             dragActive ? 'text-blue-500' : 'text-gray-400'
@@ -257,6 +286,7 @@ export const UploadPage: React.FC = () => {
             multiple
             accept="application/pdf"
             onChange={handleFileSelect}
+            onClick={(e) => e.stopPropagation()}
             className="hidden"
           />
         </div>
