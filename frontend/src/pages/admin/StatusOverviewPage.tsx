@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
-  RefreshCw, 
+  RefreshCw,
   CheckCircle,
   AlertCircle,
   Clock,
+  Activity,
   FileText,
   Languages,
   Globe,
-  Server,
-  Database,
-  Package,
+  Users,
+  Calendar,
   TrendingUp,
-  Activity
+  AlertTriangle
 } from 'lucide-react';
 import axios from 'axios';
+import { DOCUMENT_STATUS, ACTIVITY_STATUS, DocumentStatus, ActivityStatus } from '../../constants/enums';
 import './AdminPages.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
@@ -98,13 +99,13 @@ export const StatusOverviewPage: React.FC = () => {
       // Calculate system stats from real data
       const stats: SystemStats = {
         totalDocuments: documents.length,
-        documentsProcessed: documents.filter((d: any) => d.status === 'processed').length,
-        documentsReduced: documents.filter((d: any) => d.status === 'reduced').length,
-        documentsTranslated: documents.filter((d: any) => d.status === 'translated').length,
+        documentsProcessed: documents.filter((d: any) => d.status === DOCUMENT_STATUS.PROCESSED).length,
+        documentsReduced: documents.filter((d: any) => d.status === DOCUMENT_STATUS.REDUCED).length,
+        documentsTranslated: documents.filter((d: any) => d.status === DOCUMENT_STATUS.TRANSLATED).length,
         documentsPublished: publishingStats.published || 0,
         totalLanguages: publishingStats.totalLanguages || 0,
         totalProducts: productStats.totalProducts || 0,
-        processingQueue: documents.filter((d: any) => d.status === 'processing').length,
+        processingQueue: documents.filter((d: any) => d.status === DOCUMENT_STATUS.PROCESSING).length,
         successRate: Math.round(successRate),
         avgProcessingTime: formatProcessingTime(avgTimeMinutes)
       };
@@ -135,17 +136,17 @@ export const StatusOverviewPage: React.FC = () => {
 
   const getActivityType = (status: string): RecentActivity['type'] => {
     switch (status) {
-      case 'processing': return 'processing';
-      case 'reduced': return 'reduction';
-      case 'translated': return 'translation';
-      case 'published': return 'publishing';
+      case DOCUMENT_STATUS.PROCESSING: return ACTIVITY_STATUS.PROCESSING;
+      case DOCUMENT_STATUS.REDUCED: return ACTIVITY_STATUS.REDUCTION;
+      case DOCUMENT_STATUS.TRANSLATED: return ACTIVITY_STATUS.TRANSLATION;
+      case DOCUMENT_STATUS.PUBLISHED: return ACTIVITY_STATUS.PUBLISHING;
       default: return 'upload';
     }
   };
 
   const getActivityStatus = (status: string): RecentActivity['status'] => {
-    if (status === 'failed' || status === 'error') return 'failed';
-    if (status === 'processing') return 'in-progress';
+    if (status === DOCUMENT_STATUS.FAILED || status === ACTIVITY_STATUS.ERROR) return ACTIVITY_STATUS.FAILED;
+    if (status === DOCUMENT_STATUS.PROCESSING) return ACTIVITY_STATUS.IN_PROGRESS;
     return 'completed';
   };
 

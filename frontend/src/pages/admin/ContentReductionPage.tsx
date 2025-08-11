@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { 
   GitBranch, 
-  RefreshCw, 
+  RefreshCw,
   CheckCircle,
+  AlertCircle,
+  Clock,
   Play,
+  Download,
   Eye,
-  FileText,
-  X,
-  Activity
+  BarChart3
 } from 'lucide-react';
 import axios from 'axios';
+import { DOCUMENT_STATUS, DocumentStatus } from '../../constants/enums';
 import './AdminPages.css';
 import type { 
   AILogEntry, 
@@ -21,13 +23,19 @@ import type {
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
 // Extended Document interface for content reduction page
-interface Document extends Omit<BaseDocument, 'status' | 'contentReduction'> {
-  status: 'processed' | 'reducing' | 'reduced' | 'failed';
+interface Document {
+  id: string;
+  filename: string;
+  originalName: string;
+  size: number;
+  status: DocumentStatus;
+  uploadedAt: string;
+  processedAt?: string;
+  error?: string;
   contentReduction?: {
     totalGroups: number;
     languagesDetected: string[];
     processedAt: string;
-    hasAiLogs?: boolean;
   };
 }
 
@@ -79,7 +87,7 @@ export const ContentReductionPage: React.FC = () => {
       const response = await axios.get(`${API_BASE}/admin/documents?limit=100`);
       // Only show documents that are ready for content reduction or already reduced
       const docs = (response.data.data || []).filter((doc: Document) => 
-        doc.status === 'processed' || doc.status === 'reducing' || doc.status === 'reduced' || doc.status === 'failed'
+        doc.status === DOCUMENT_STATUS.PROCESSED || doc.status === DOCUMENT_STATUS.REDUCING || doc.status === DOCUMENT_STATUS.REDUCED || doc.status === DOCUMENT_STATUS.FAILED
       );
       setDocuments(docs);
     } catch (error) {
@@ -231,30 +239,30 @@ Chunks generated: ${result.chunksGenerated}`);
     setLoadingAiLogs(false);
   };
 
-  const getStatusBadgeClass = (status: string) => {
+  const getStatusBadgeClass = (status: DocumentStatus) => {
     switch (status) {
-      case 'processed':
+      case DOCUMENT_STATUS.PROCESSED:
         return 'status-ready';
-      case 'reducing':
+      case DOCUMENT_STATUS.REDUCING:
         return 'status-processing';
-      case 'reduced':
+      case DOCUMENT_STATUS.REDUCED:
         return 'status-success';
-      case 'failed':
+      case DOCUMENT_STATUS.FAILED:
         return 'status-error';
       default:
         return 'status-default';
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: DocumentStatus) => {
     switch (status) {
-      case 'processed':
+      case DOCUMENT_STATUS.PROCESSED:
         return 'Ready for Reduction';
-      case 'reducing':
+      case DOCUMENT_STATUS.REDUCING:
         return 'Processing...';
-      case 'reduced':
+      case DOCUMENT_STATUS.REDUCED:
         return 'Completed';
-      case 'failed':
+      case DOCUMENT_STATUS.FAILED:
         return 'Failed';
       default:
         return status;
@@ -301,7 +309,7 @@ Chunks generated: ${result.chunksGenerated}`);
                         {doc.originalName}
                       </h3>
                       <div className={`admin-status-badge ${getStatusBadgeClass(doc.status)}`}>
-                        {doc.status === 'reduced' ? (
+                        {doc.status === DOCUMENT_STATUS.REDUCED ? (
                           <CheckCircle className="admin-status-icon" />
                         ) : doc.status === 'reducing' ? (
                           <RefreshCw className="admin-status-icon animate-spin" />
@@ -355,7 +363,7 @@ Chunks generated: ${result.chunksGenerated}`);
                   </div>
 
                   <div className="admin-document-actions">
-                    {doc.status === 'processed' && (
+                    {doc.status === DOCUMENT_STATUS.PROCESSED && (
                       <button
                         onClick={() => startContentReduction(doc.id)}
                         disabled={processing.has(doc.id)}
@@ -375,7 +383,7 @@ Chunks generated: ${result.chunksGenerated}`);
                       </button>
                     )}
                     
-                    {doc.status === 'reduced' && (
+                    {doc.status === DOCUMENT_STATUS.REDUCED && (
                       <>
                         <button
                           onClick={() => viewReductionDetails(doc.id)}
@@ -444,11 +452,11 @@ Chunks generated: ${result.chunksGenerated}`);
         <h3>Reduction Progress</h3>
         <div className="admin-stats-grid">
           <div className="admin-stat-card info">
-            <div className="stat-value">{documents.filter(d => d.status === 'processed').length}</div>
+            <div className="stat-value">{documents.filter(d => d.status === DOCUMENT_STATUS.PROCESSED).length}</div>
             <div className="stat-label">Ready for Reduction</div>
           </div>
           <div className="admin-stat-card success">
-            <div className="stat-value">{documents.filter(d => d.status === 'reduced').length}</div>
+            <div className="stat-value">{documents.filter(d => d.status === DOCUMENT_STATUS.REDUCED).length}</div>
             <div className="stat-label">Completed</div>
           </div>
           <div className="admin-stat-card purple">

@@ -19,12 +19,25 @@ import './AdminPages.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
+// Document status constants
+const DOCUMENT_STATUS = {
+  PROCESSING: 'processing',
+  PROCESSED: 'processed',
+  REDUCING: 'reducing', 
+  REDUCED: 'reduced',
+  TRANSLATING: 'translating',
+  TRANSLATED: 'translated',
+  FAILED: 'failed'
+} as const;
+
+type DocumentStatus = typeof DOCUMENT_STATUS[keyof typeof DOCUMENT_STATUS];
+
 interface Document {
   id: string;
   filename: string;
   originalName: string;
   size: number;
-  status: 'processing' | 'processed' | 'reduced' | 'translated' | 'failed';
+  status: DocumentStatus;
   uploadedAt: string;
   processedAt?: string;
   error?: string;
@@ -106,32 +119,32 @@ export const DocumentsPage: React.FC = () => {
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: DocumentStatus) => {
     switch (status) {
-      case 'processed':
+      case DOCUMENT_STATUS.PROCESSED:
         return <CheckCircle className="admin-status-icon success" />;
-      case 'processing':
+      case DOCUMENT_STATUS.PROCESSING:
         return <RefreshCw className="admin-status-icon processing animate-spin" />;
-      case 'reduced':
+      case DOCUMENT_STATUS.REDUCED:
         return <BarChart3 className="admin-status-icon success" />;
-      case 'translated':
+      case DOCUMENT_STATUS.TRANSLATED:
         return <CheckCircle className="admin-status-icon success" />;
-      case 'failed':
+      case DOCUMENT_STATUS.FAILED:
         return <AlertCircle className="admin-status-icon error" />;
       default:
         return <Clock className="admin-status-icon processing" />;
     }
   };
 
-  const getStatusBadgeClass = (status: string) => {
+  const getStatusBadgeClass = (status: DocumentStatus) => {
     switch (status) {
-      case 'processed':
-      case 'reduced':
-      case 'translated':
+      case DOCUMENT_STATUS.PROCESSED:
+      case DOCUMENT_STATUS.REDUCED:
+      case DOCUMENT_STATUS.TRANSLATED:
         return 'processed';
-      case 'processing':
+      case DOCUMENT_STATUS.PROCESSING:
         return 'processing';
-      case 'failed':
+      case DOCUMENT_STATUS.FAILED:
         return 'failed';
       default:
         return 'default';
@@ -175,10 +188,14 @@ export const DocumentsPage: React.FC = () => {
   // Calculate statistics
   const stats = {
     total: documents.length,
-    processed: documents.filter(d => ['processed', 'reduced', 'translated'].includes(d.status)).length,
-    processing: documents.filter(d => d.status === 'processing').length,
-    failed: documents.filter(d => d.status === 'failed').length,
-    translated: documents.filter(d => d.status === 'translated').length,
+    processed: documents.filter(d => 
+      d.status === DOCUMENT_STATUS.PROCESSED || 
+      d.status === DOCUMENT_STATUS.REDUCED || 
+      d.status === DOCUMENT_STATUS.TRANSLATED
+    ).length,
+    processing: documents.filter(d => d.status === DOCUMENT_STATUS.PROCESSING).length,
+    failed: documents.filter(d => d.status === DOCUMENT_STATUS.FAILED).length,
+    translated: documents.filter(d => d.status === DOCUMENT_STATUS.TRANSLATED).length,
     totalStorage: documents.reduce((acc, doc) => acc + doc.size, 0),
     avgProcessingTime: calculateAverageProcessingTime(documents),
   };
@@ -311,11 +328,11 @@ export const DocumentsPage: React.FC = () => {
             className="admin-form-select"
           >
             <option value="all">All Status</option>
-            <option value="processing">Processing</option>
-            <option value="processed">Processed</option>
-            <option value="reduced">Reduced</option>
-            <option value="translated">Translated</option>
-            <option value="failed">Failed</option>
+            <option value={DOCUMENT_STATUS.PROCESSING}>Processing</option>
+            <option value={DOCUMENT_STATUS.PROCESSED}>Processed</option>
+            <option value={DOCUMENT_STATUS.REDUCED}>Reduced</option>
+            <option value={DOCUMENT_STATUS.TRANSLATED}>Translated</option>
+            <option value={DOCUMENT_STATUS.FAILED}>Failed</option>
           </select>
         </div>
 

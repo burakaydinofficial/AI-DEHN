@@ -8,14 +8,17 @@ import {
   X
 } from 'lucide-react';
 import axios from 'axios';
+import { DOCUMENT_STATUS, UPLOAD_STATUS, DocumentStatus, UploadStatus } from '../../constants/enums';
 import './AdminPages.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
 interface UploadProgress {
+  id: string;
   filename: string;
+  size: number;
+  status: UploadStatus;
   progress: number;
-  status: 'uploading' | 'processing' | 'success' | 'error';
   error?: string;
   documentId?: string;
 }
@@ -24,16 +27,10 @@ interface UploadedDocument {
   id: string;
   filename: string;
   originalName: string;
-  size: number;
-  status: 'processing' | 'processed' | 'failed';
+  status: DocumentStatus;
   uploadedAt: string;
-  processedAt?: string;
+  size: number;
   error?: string;
-  stats?: {
-    pageCount?: number;
-    totalChars?: number;
-    imagesCount?: number;
-  };
 }
 
 export const UploadPage: React.FC = () => {
@@ -91,9 +88,11 @@ export const UploadPage: React.FC = () => {
       } else {
         // Show error for non-PDF files
         setUploads(prev => [...prev, {
+          id: Date.now().toString(),
           filename: file.name,
+          size: file.size,
           progress: 0,
-          status: 'error',
+          status: UPLOAD_STATUS.ERROR,
           error: 'Only PDF files are supported'
         }]);
       }
@@ -102,9 +101,11 @@ export const UploadPage: React.FC = () => {
 
   const uploadFile = async (file: File) => {
     const uploadProgress: UploadProgress = {
+      id: Date.now().toString(),
       filename: file.name,
+      size: file.size,
       progress: 0,
-      status: 'uploading'
+      status: UPLOAD_STATUS.UPLOADING
     };
 
     setUploads(prev => [...prev, uploadProgress]);
@@ -121,7 +122,7 @@ export const UploadPage: React.FC = () => {
           if (progressEvent.total) {
             const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             setUploads(prev => prev.map(upload => 
-              upload.filename === file.name && upload.status === 'uploading'
+              upload.filename === file.name && upload.status === UPLOAD_STATUS.UPLOADING
                 ? { ...upload, progress }
                 : upload
             ));
@@ -135,7 +136,7 @@ export const UploadPage: React.FC = () => {
             ? { 
                 ...upload, 
                 progress: 100, 
-                status: 'processing',
+                status: UPLOAD_STATUS.PROCESSING,
                 documentId: response.data.document.id 
               }
             : upload
@@ -171,14 +172,14 @@ export const UploadPage: React.FC = () => {
           upload.filename === filename && upload.documentId === documentId
             ? { 
                 ...upload, 
-                status: doc.status === 'processed' ? 'success' : 
-                       doc.status === 'failed' ? 'error' : 'processing',
+                status: doc.status === DOCUMENT_STATUS.PROCESSED ? UPLOAD_STATUS.SUCCESS : 
+                       doc.status === DOCUMENT_STATUS.FAILED ? UPLOAD_STATUS.ERROR : UPLOAD_STATUS.PROCESSING,
                 error: doc.error
               }
             : upload
         ));
 
-        if (doc.status === 'processed' || doc.status === 'failed') {
+        if (doc.status === DOCUMENT_STATUS.PROCESSED || doc.status === DOCUMENT_STATUS.FAILED) {
           return; // Stop polling
         }
 
@@ -207,14 +208,14 @@ export const UploadPage: React.FC = () => {
     setUploads(prev => prev.filter(upload => upload.filename !== filename));
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: UploadStatus) => {
     switch (status) {
-      case 'uploading':
-      case 'processing':
+      case UPLOAD_STATUS.UPLOADING:
+      case UPLOAD_STATUS.PROCESSING:
         return <RefreshCw className="admin-upload-status-icon admin-loading-spinner" />;
-      case 'success':
+      case UPLOAD_STATUS.SUCCESS:
         return <CheckCircle className="admin-upload-status-icon success" />;
-      case 'error':
+      case UPLOAD_STATUS.ERROR:
         return <AlertCircle className="admin-upload-status-icon error" />;
       default:
         return <FileText className="admin-upload-status-icon default" />;
@@ -223,13 +224,13 @@ export const UploadPage: React.FC = () => {
 
   const getStatusMessage = (upload: UploadProgress) => {
     switch (upload.status) {
-      case 'uploading':
+      case UPLOAD_STATUS.UPLOADING:
         return `Uploading... ${upload.progress}%`;
-      case 'processing':
+      case UPLOAD_STATUS.PROCESSING:
         return 'Processing PDF (extracting content and images)...';
-      case 'success':
+      case UPLOAD_STATUS.SUCCESS:
         return 'PDF processed successfully - ready for content reduction';
-      case 'error':
+      case UPLOAD_STATUS.ERROR:
         return upload.error || 'Unknown error';
       default:
         return 'Ready';
@@ -301,7 +302,7 @@ export const UploadPage: React.FC = () => {
                     <p className="admin-upload-item-status">
                       {getStatusMessage(upload)}
                     </p>
-                    {upload.status === 'uploading' && (
+                    {upload.status === UPLOAD_STATUS.UPLOADING && (
                       <div className="admin-upload-progress-bar">
                         <div 
                           className="admin-upload-progress-fill"

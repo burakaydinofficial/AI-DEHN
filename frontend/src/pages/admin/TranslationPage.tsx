@@ -10,6 +10,7 @@ import {
   Loader
 } from 'lucide-react';
 import axios from 'axios';
+import { DOCUMENT_STATUS, DocumentStatus } from '../../constants/enums';
 import './AdminPages.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
@@ -18,7 +19,7 @@ interface Document {
   id: string;
   filename: string;
   originalName: string;
-  status: 'reduced' | 'translating' | 'translated' | 'failed' | 'processing';
+  status: DocumentStatus;
   processingStage?: string;
   contentReduction?: {
     totalGroups: number;
@@ -190,14 +191,14 @@ export const TranslationPage: React.FC = () => {
 
   const getStatusInfo = (doc: Document) => {
     switch (doc.status) {
-      case 'reduced':
+      case DOCUMENT_STATUS.REDUCED:
         return { color: 'text-blue-600 bg-blue-100', icon: <Clock className="w-4 h-4" />, text: 'Ready for Translation' };
-      case 'processing':
-      case 'translating':
+      case DOCUMENT_STATUS.PROCESSING:
+      case DOCUMENT_STATUS.TRANSLATING:
         return { color: 'text-orange-600 bg-orange-100', icon: <Loader className="w-4 h-4 animate-spin" />, text: 'Translating...' };
-      case 'translated':
+      case DOCUMENT_STATUS.TRANSLATED:
         return { color: 'text-green-600 bg-green-100', icon: <CheckCircle className="w-4 h-4" />, text: 'Translation Complete' };
-      case 'failed':
+      case DOCUMENT_STATUS.FAILED:
         return { color: 'text-red-600 bg-red-100', icon: <AlertCircle className="w-4 h-4" />, text: 'Translation Failed' };
       default:
         return { color: 'text-gray-600 bg-gray-100', icon: <Clock className="w-4 h-4" />, text: 'Unknown Status' };
@@ -386,7 +387,7 @@ export const TranslationPage: React.FC = () => {
                       </td>
                       <td>
                         <div className="admin-actions">
-                          {doc.status === 'reduced' && (
+                          {doc.status === DOCUMENT_STATUS.REDUCED && (
                             <button
                               onClick={() => startTranslation(doc.id)}
                               disabled={isTranslating || translationParams.targetLanguages.length === 0}
@@ -400,7 +401,7 @@ export const TranslationPage: React.FC = () => {
                               Translate
                             </button>
                           )}
-                          {doc.status === 'translated' && (
+                          {doc.status === DOCUMENT_STATUS.TRANSLATED && (
                             <button
                               onClick={() => startTranslation(doc.id)}
                               disabled={isTranslating}
